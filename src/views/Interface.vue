@@ -28,8 +28,13 @@ import {
     computed,
     createComponent,
     watch,
+<<<<<<< HEAD
     reactive,
     SetupContext
+=======
+    ref,
+    Ref
+>>>>>>> change reactive state to ref var to fix typing issue
 } from "@vue/composition-api";
 import store from "../store";
 import axios from "axios";
@@ -45,6 +50,7 @@ export default createComponent({
         AccountCard,
         TxHistory
     },
+<<<<<<< HEAD
     setup(props: object, context: SetupContext) {
         if (store.state.wallet.session === null) {
             throw new Error(
@@ -53,6 +59,10 @@ export default createComponent({
         }
         
         const state = reactive({ rows: (null as unknown) as Transactions });
+=======
+    setup() {
+        const txRows: Ref<Transactions | null> = ref(null);
+>>>>>>> change reactive state to ref var to fix typing issue
 
         // Boolean used to determine if the user has been to interface
         // Otherwise don't show the Logout modal
@@ -79,14 +89,14 @@ export default createComponent({
         }
 
         watch(getData, async (result: Promise<Transactions>) => {
-            state.rows = await result;
+            txRows.value = await result;
         });
 
         const columns = ["1", "2", "3"];
 
         const rows = computed(() => {
-            if (state.rows !== null) {
-                return state.rows.transactions;
+            if (txRows.value !== null) {
+                return txRows.value.transactions;
             }
 
             return "";

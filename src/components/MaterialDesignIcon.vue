@@ -2,8 +2,8 @@
     <svg
         :width="size"
         :height="size"
-        viewBox="0 0 24 24"
-        :class="{ 'mdi-spin': spin, 'mdi-slow-spin': slowSpin }"
+        :viewBox="viewbox"
+        :class="{ 'mdi-spin': spin }"
         v-on="this.$listeners"
     >
         <path :d="icon"></path>
@@ -19,7 +19,8 @@ export default createComponent({
         spin: Boolean,
         slowSpin: Boolean,
         size: { type: Number, default: 24 },
-        icon: { type: String, required: true }
+        icon: { type: String, required: true },
+        viewbox: { type: String, required: false, default: "0 0 24 24" }
     }
 });
 </script>

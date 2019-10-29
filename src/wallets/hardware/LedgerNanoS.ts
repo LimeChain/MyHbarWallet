@@ -5,17 +5,15 @@ import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 // Preserving, in case we need this later
 // export const LEDGER_HEDERA_PATH = "44'/3030'/0'/0'/0'";
 
-export const INDEX = 0x01; // Key Index on Ledger
+export const INDEX = 0x00; // Key Index on Ledger
 
 export const CLA = 0xE0;
 const INS_GET_PK = 0x02;
+const INS_FILE_CONTEXT = 0x03;
 const INS_SIGN_TX = 0x04;
 
 const P1_UNUSED_APDU = 0x00;
 const P2_UNUSED_APDU = 0x00;
-
-const P1_FIRST = 0x01;
-const P1_LAST = 0x08;
 
 export type LedgerDeviceStatus = {
     deviceStatus: number;
@@ -77,6 +75,36 @@ export default class LedgerNanoS implements Wallet {
         }
 
         return this.publicKey;
+    }
+
+    public async sendFileContext(
+        expect: boolean,
+        current: number,
+        total: number,
+        fileId: {
+            shard: number;
+            realm: number;
+            file: number;
+        }
+    ): Promise<boolean> {
+        const buffer = Buffer.alloc(28);
+        buffer.writeUInt32LE(INDEX, 0);
+        buffer.writeUInt32LE(expect ? 1 : 0, 4);
+        buffer.writeUInt32LE(current, 8);
+        buffer.writeUInt32LE(total, 12);
+        buffer.writeUInt32LE(fileId.shard, 16);
+        buffer.writeUInt32LE(fileId.realm, 20);
+        buffer.writeUInt32LE(fileId.file, 24);
+
+        const response = await this.sendAPDU({
+            CLA,
+            INS: INS_FILE_CONTEXT,
+            P1: P1_UNUSED_APDU,
+            P2: P2_UNUSED_APDU,
+            buffer
+        });
+
+        return (response !== null);
     }
 
     public async signTransaction(

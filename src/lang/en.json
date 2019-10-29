@@ -38,6 +38,7 @@
     "common.error.invalidSignature": "This account is not associated with your private key.",
     "common.error.lockedDevice": "Permission Denied from Device",
     "common.error.loginFailed": "Failed to Log In",
+    "common.error.malformedAPDU": "Malformed Ledger Request",
     "common.error.noConnection": "Could not reach the network. Check your connection and try again",
     "common.error.noSession": "Invalid session, try re-logging in",
     "common.error.nullAccountOnInterface": "Null Account on Interface!",

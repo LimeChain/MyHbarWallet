@@ -138,6 +138,9 @@ export default {
                     message = i18n.t("common.error.wrongApp").toString();
                     severity = "warn";
                     break;
+                case StatusCodes.CLA_NOT_SUPPORTED:
+                    message = i18n.t("common.error.malformedAPDU").toString();
+                    break;
                 default:
                     console.log(payload.error.statusCode);
                     console.log(payload.error);

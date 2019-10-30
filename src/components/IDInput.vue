@@ -41,6 +41,7 @@ export interface Props {
     canCopy: boolean;
     label: string;
     file: boolean;
+    isSend: boolean;
 }
 
 export default createComponent({
@@ -52,7 +53,8 @@ export default createComponent({
         error: (String as unknown) as PropType<string>,
         canCopy: (Boolean as unknown) as PropType<boolean>,
         label: (String as unknown) as PropType<string>,
-        file: (Boolean as unknown) as PropType<boolean>
+        file: (Boolean as unknown) as PropType<boolean>,
+        isSend: (Boolean as unknown) as PropType<boolean>
     },
     setup(props, context) {
         const state = reactive<State>({
@@ -124,12 +126,15 @@ export default createComponent({
             newVal => {
                 // input.value is not set until after modal is open
                 Vue.nextTick(() => {
-                    if (newVal && input.value) {
+                    if (newVal && input.value && !props.isSend) {
                         // Clear input every time we reopen this modal
                         state.input = "";
                         input.value.focus();
                     }
                 });
+                if (newVal == false && input.value && props.isSend) {
+                    state.input = "";
+                }
             }
         );
 

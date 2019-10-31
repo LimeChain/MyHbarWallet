@@ -201,10 +201,11 @@ export default createComponent({
 .upload-subtext {
     color: var(--color-china-blue);
     font-size: 18px;
-    margin-block-end: 60px;
+    margin-block-end: 40px;
 }
 
 .icon {
+    margin-block-end: 10px;
     margin-inline-start: 10px;
 }
 

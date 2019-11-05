@@ -28,7 +28,6 @@ import {
     computed,
     createComponent,
     watch,
-    reactive,
     SetupContext,
     ref,
     Ref
@@ -36,7 +35,6 @@ import {
 import store from "../store";
 import { Id } from "../store/modules/wallet";
 import { Transactions } from "../transactions";
-import { LoginMethod } from "../wallets/Wallet";
 
 export default createComponent({
     components: {

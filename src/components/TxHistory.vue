@@ -164,15 +164,21 @@ td {
     border-top: 1px solid #e3e3e3;
     font-size: 10pt;
     overflow: hidden;
+    text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .to-from {
     color: var(--color-california-orange);
-    padding-block-start: 18px;
+    padding-block-start: 9px;
     padding-inline-end: 0;
     padding-inline-start: 0;
+    text-align: start;
+}
+
+.from {
+    text-align: center;
 }
 
 .icon {
@@ -187,7 +193,7 @@ td {
     display: inline-block;
     max-width: 132px;
     overflow: hidden;
-    padding-inline-end: 10px;
+    padding: 0;
     text-overflow: ellipsis;
     vertical-align: bottom;
     white-space: nowrap;
@@ -196,8 +202,7 @@ td {
 .age-entry {
     font-size: 8pt;
     grid-area: age;
-    margin-block-end: auto;
-    margin-block-start: auto;
+    padding: 0;
 }
 
 tr:last-child {
@@ -207,13 +212,14 @@ tr:last-child {
 
 .table-footer {
     color: var(--color-fluorescent-red-orange);
-    font-size: 22px;
+    font-size: 14px;
     font-weight: 500;
     padding-block-start: 15px;
 }
 
 .logo {
-    margin-block-start: -6px;
+    height: 12px;
+    margin-block-start: -2px;
     margin-inline-start: 2px;
 }
 

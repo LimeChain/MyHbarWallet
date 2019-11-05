@@ -28,13 +28,10 @@ import {
     computed,
     createComponent,
     watch,
-<<<<<<< HEAD
     reactive,
-    SetupContext
-=======
+    SetupContext,
     ref,
     Ref
->>>>>>> change reactive state to ref var to fix typing issue
 } from "@vue/composition-api";
 import store from "../store";
 import { Id } from "../store/modules/wallet";
@@ -49,19 +46,14 @@ export default createComponent({
         AccountCard,
         TxHistory
     },
-<<<<<<< HEAD
     setup(props: object, context: SetupContext) {
         if (store.state.wallet.session === null) {
             throw new Error(
                 context.root.$t("common.error.noSession").toString()
             );
         }
-        
-        const state = reactive({ rows: (null as unknown) as Transactions });
-=======
-    setup() {
+
         const txRows: Ref<Transactions | null> = ref(null);
->>>>>>> change reactive state to ref var to fix typing issue
 
         // Boolean used to determine if the user has been to interface
         // Otherwise don't show the Logout modal

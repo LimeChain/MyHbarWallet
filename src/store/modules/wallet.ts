@@ -75,6 +75,22 @@ export interface Id {
     account: number;
 }
 
+export class Sessions<T extends Session> {
+    private sessions: { [key: number]: T } = {};
+
+    public setSession(key: number, session: T): void {
+        this.sessions[key] = session;
+    }
+
+    public getSession(key: number): T {
+        return this.sessions[key];
+    }
+
+    public clear(): void {
+        this.sessions = {};
+    }
+}
+
 export interface Session {
     account: Id;
     wallet: Wallet;
@@ -82,7 +98,8 @@ export interface Session {
 }
 
 export interface State {
-    session: Session | null;
+    sessions: Sessions<Session> | null;
+    currentSession: Session | null;
     balance: BigNumber | null;
     exchangeRate: BigNumber | null;
 }
@@ -128,21 +145,31 @@ export type CreateAccountDTO = AccountDTO & AccountCreateDTO;
 
 export default {
     state: {
-        session: null,
+        sessions: null,
+        currentSession: null,
         balance: null,
         exchangeRate: null
     },
     getters: {
         [IS_LOGGED_IN]: (state: State): boolean => {
-            return state.session != null;
+            return state.sessions != null;
+        },
+        [CURRENT_SESSION]: (state: State): Session | null => {
+            if (state.currentSession !== null)
+                return state.currentSession as Session;
+            return null;
         }
     },
     mutations: {
         [LOG_IN](state: State, session: Session): void {
-            state.session = session;
+            if (state.sessions === null) {
+                state.sessions = new Sessions();
+            }
+            state.sessions.setSession(session.account["account"], session);
+            state.currentSession = session;
         },
         [LOG_OUT](state: State): void {
-            state.session = null;
+            state.sessions = null;
             state.balance = null;
         },
         [SET_BALANCE](state: State, balance: BigNumber): void {
@@ -157,22 +184,21 @@ export default {
             commit,
             state
         }: ActionContext<State, RootState>) {
-            if (state.session == null) {
+            if (state.sessions == null) {
                 console.warn("attempt to refresh balance with a null session");
                 return;
             }
             const { Client } = await (import("@hashgraph/sdk") as Promise<
                 typeof import("@hashgraph/sdk")
             >);
-            if (!(state.session.client instanceof Client)) {
+            if (!(state.sessions.getSession(2).client instanceof Client)) {
                 throw new TypeError(
                     "state.session.client not instance of Client: Programmer Error"
                 );
             }
 
-            const balance = await (state.session.client as InstanceType<
-                typeof Client
-            >).getAccountBalance();
+            const balance = await (state.sessions.getSession(2)
+                .client as InstanceType<typeof Client>).getAccountBalance();
 
             commit(SET_BALANCE, balance);
         },
@@ -180,7 +206,7 @@ export default {
             commit,
             state
         }: ActionContext<State, RootState>) {
-            if (state.session == null) {
+            if ((state.sessions as Sessions<Session>).getSession(2) == null) {
                 console.warn(
                     "attempt to refresh exchange rate with a null session"
                 );

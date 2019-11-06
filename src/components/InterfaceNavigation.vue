@@ -98,10 +98,16 @@ export default createComponent({
         });
 
         const notLedger = computed(() => {
-            if (store.state.wallet.session !== null) {
+            if (
+                store.state.wallet.sessions !== null &&
+                store.state.wallet.currentSession !== null
+            ) {
                 return (
-                    store.state.wallet.session.wallet.getLoginMethod() !==
-                    LoginMethod.LedgerNanoS
+                    store.state.wallet.sessions
+                        .getSession(
+                            store.state.wallet.currentSession.account.account
+                        )
+                        .wallet.getLoginMethod() !== LoginMethod.LedgerNanoS
                 );
             }
 

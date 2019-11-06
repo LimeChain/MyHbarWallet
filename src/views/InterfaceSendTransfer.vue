@@ -249,7 +249,7 @@ export default createComponent({
         }
 
         async function handleSendTransfer(): Promise<void> {
-            if (store.state.wallet.session == null) {
+            if (store.state.wallet.sessions == null) {
                 throw new Error(
                     context.root
                         .$t("common.error.nullAccountOnInterface")
@@ -259,7 +259,7 @@ export default createComponent({
 
             state.isBusy = true;
 
-            const client = store.state.wallet.session.client;
+            const client = store.state.wallet.sessions.getSession(2).client;
 
             try {
                 if (state.account == null) {
@@ -307,7 +307,7 @@ export default createComponent({
                     typeof Client
                 >)
                     .addSender(
-                        store.state.wallet.session.account,
+                        store.state.wallet.sessions.getSession(2).account,
                         sendAmountTinybar
                     )
                     .addRecipient(recipient, sendAmountTinybar)

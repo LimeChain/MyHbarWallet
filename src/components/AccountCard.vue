@@ -72,9 +72,18 @@ import store from "../store";
 async function getPrivateKey(): Promise<
     import("@hashgraph/sdk").Ed25519PrivateKey | null
 > {
-    if (store.state.wallet.session !== null) {
-        if (store.state.wallet.session.wallet.hasPrivateKey()) {
-            return store.state.wallet.session.wallet.getPrivateKey();
+    if (
+        store.state.wallet.sessions !== null &&
+        store.state.wallet.currentSession !== null
+    ) {
+        if (
+            store.state.wallet.sessions
+                .getSession(store.state.wallet.currentSession.account.account)
+                .wallet.hasPrivateKey()
+        ) {
+            return store.state.wallet.sessions
+                .getSession(store.state.wallet.currentSession.account.account)
+                .wallet.getPrivateKey();
         }
     }
 
@@ -84,8 +93,13 @@ async function getPrivateKey(): Promise<
 async function getPublicKey(): Promise<
     import("@hashgraph/sdk").PublicKey | null
 > {
-    if (store.state.wallet.session !== null) {
-        return store.state.wallet.session.wallet.getPublicKey();
+    if (
+        store.state.wallet.sessions !== null &&
+        store.state.wallet.currentSession !== null
+    ) {
+        return store.state.wallet.sessions
+            .getSession(store.state.wallet.currentSession.account.account)
+            .wallet.getPublicKey();
     }
 
     return null;
@@ -142,8 +156,13 @@ export default createComponent({
         );
 
         const hasPrivateKey = computed(() =>
-            store.state.wallet.session !== null
-                ? store.state.wallet.session.wallet.hasPrivateKey()
+            store.state.wallet.sessions !== null &&
+            store.state.wallet.currentSession !== null
+                ? store.state.wallet.sessions
+                      .getSession(
+                          store.state.wallet.currentSession.account.account
+                      )
+                      .wallet.hasPrivateKey()
                 : false
         );
         const hasPublicKey = computed(() => state.publicKey !== null);

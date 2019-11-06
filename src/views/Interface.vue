@@ -22,14 +22,8 @@ import InterfaceNavigation from "../components/InterfaceNavigation.vue";
 import NetworkCard from "../components/NetworkCard.vue";
 import BalanceCard from "../components/BalanceCard.vue";
 import AccountCard from "../components/AccountCard.vue";
-import {
-    computed,
-    createComponent,
-    reactive,
-    SetupContext
-} from "@vue/composition-api";
+import { computed, createComponent, SetupContext } from "@vue/composition-api";
 import store from "../store";
-import { LoginMethod } from "../wallets/Wallet";
 
 export default createComponent({
     components: {
@@ -39,7 +33,7 @@ export default createComponent({
         AccountCard
     },
     setup(props: object, context: SetupContext) {
-        if (store.state.wallet.session === null) {
+        if (store.state.wallet.sessions === null) {
             throw new Error(
                 context.root.$t("common.error.noSession").toString()
             );
@@ -50,8 +44,8 @@ export default createComponent({
         store.state.interfaceMenu.hasBeenToInterface = true;
 
         const account = computed(() =>
-            store.state.wallet.session != null
-                ? store.state.wallet.session.account
+            store.state.wallet.sessions != null
+                ? store.state.wallet.sessions.getSession(2).account
                 : null
         );
 

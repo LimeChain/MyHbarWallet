@@ -1,6 +1,7 @@
 // wallet
 export const IS_LOGGED_IN = "IS_LOGGED_IN";
 export const GET_WALLET_TYPE = "GET_WALLET_TYPE";
+export const CURRENT_SESSION = "CURRENT SESSION";
 
 // fees
 export const ESTIMATED_FEE_HBAR = "ESTIMATED_FEE_HBAR";

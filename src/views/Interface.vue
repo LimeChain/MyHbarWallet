@@ -44,8 +44,8 @@ export default createComponent({
         store.state.interfaceMenu.hasBeenToInterface = true;
 
         const account = computed(() =>
-            store.state.wallet.sessions != null
-                ? store.state.wallet.sessions.getSession(2).account
+            store.state.wallet.currentSession != null
+                ? store.state.wallet.currentSession.account
                 : null
         );
 

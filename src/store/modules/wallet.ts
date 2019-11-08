@@ -3,7 +3,7 @@ import {
     LOG_OUT,
     SET_HAS_BEEN_TO_INTERFACE
 } from "../../store/mutations";
-import { IS_LOGGED_IN } from "../../store/getters";
+import { IS_LOGGED_IN, CURRENT_SESSION } from "../../store/getters";
 import { ActionContext } from "vuex";
 import { RootState } from "..";
 import {
@@ -11,7 +11,8 @@ import {
     LOG_OUT as LOG_OUT_ACTION,
     REFRESH_BALANCE,
     REFRESH_BALANCE_AND_RATE,
-    REFRESH_EXCHANGE_RATE
+    REFRESH_EXCHANGE_RATE,
+    CHANGE_SESSION
 } from "../actions";
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore
@@ -168,6 +169,9 @@ export default {
             state.sessions.setSession(session.account["account"], session);
             state.currentSession = session;
         },
+        [CHANGE_SESSION](state: State, session: Session): void {
+            state.currentSession = session;
+        },
         [LOG_OUT](state: State): void {
             state.sessions = null;
             state.balance = null;
@@ -184,21 +188,22 @@ export default {
             commit,
             state
         }: ActionContext<State, RootState>) {
-            if (state.sessions == null) {
+            if (state.currentSession == null) {
                 console.warn("attempt to refresh balance with a null session");
                 return;
             }
             const { Client } = await (import("@hashgraph/sdk") as Promise<
                 typeof import("@hashgraph/sdk")
             >);
-            if (!(state.sessions.getSession(2).client instanceof Client)) {
+            if (!(state.currentSession.client instanceof Client)) {
                 throw new TypeError(
                     "state.session.client not instance of Client: Programmer Error"
                 );
             }
 
-            const balance = await (state.sessions.getSession(2)
-                .client as InstanceType<typeof Client>).getAccountBalance();
+            const balance = await (state.currentSession.client as InstanceType<
+                typeof Client
+            >).getAccountBalance();
 
             commit(SET_BALANCE, balance);
         },
@@ -206,7 +211,7 @@ export default {
             commit,
             state
         }: ActionContext<State, RootState>) {
-            if ((state.sessions as Sessions<Session>).getSession(2) == null) {
+            if (state.currentSession == null) {
                 console.warn(
                     "attempt to refresh exchange rate with a null session"
                 );

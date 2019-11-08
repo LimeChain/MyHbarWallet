@@ -6,6 +6,7 @@ export const REFRESH_EXCHANGE_RATE = "refresh_exchange_rate";
 export const REFRESH_BALANCE_AND_RATE = "refresh_balance_and_rate";
 export const LOG_IN = "login";
 export const LOG_OUT = "logout";
+export const CHANGE_SESSION = "change_session";
 
 // errors
 export const HANDLE_LEDGER_ERROR = "handle_ledger_error";

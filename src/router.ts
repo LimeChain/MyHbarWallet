@@ -130,7 +130,7 @@ function RequireWallet(
         (): void;
     }
 ): void {
-    if (store.state.wallet.sessions == null) {
+    if (store.state.wallet.currentSession == null) {
         return next("/");
     }
 

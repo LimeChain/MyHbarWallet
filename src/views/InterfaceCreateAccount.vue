@@ -170,13 +170,13 @@ export default createComponent({
         const summaryItems = computed(() => {
             return [
                 {
-                    // todo [2019-11-05]: needs i18t
+                    // todo [2019-11-15]: needs i18t
                     description: "Initial Balance",
                     value: validBalance.value
                         ? new BigNumber(state.newBalance)
                         : new BigNumber(0)
                 },
-                // todo [2019-11-05]: needs i18t
+                // todo [2019-11-15]: needs i18t
                 { description: "Estimated Fee", value: estimatedFeeHbar }
             ] as Item[];
         });
@@ -184,7 +184,7 @@ export default createComponent({
         async function handleCreateAccount(): Promise<void> {
             state.isBusy = true;
 
-            if (store.state.wallet.session == null) {
+            if (store.state.wallet.currentSession == null) {
                 throw new Error(
                     context.root
                         .$t("common.error.nullAccountOnInterface")
@@ -192,7 +192,7 @@ export default createComponent({
                 );
             }
 
-            const client = store.state.wallet.session.client;
+            const client = store.state.wallet.currentSession.client;
 
             const { HederaError, ResponseCodeEnum } = await (import(
                 "@hashgraph/sdk"
@@ -284,7 +284,7 @@ export default createComponent({
                     }
                 } else if (
                     error.name === "TransportStatusError" &&
-                    store.state.wallet.session.wallet.getLoginMethod() ===
+                    store.state.wallet.currentSession.wallet.getLoginMethod() ===
                         LoginMethod.LedgerNanoS
                 ) {
                     await store.dispatch(HANDLE_LEDGER_ERROR, {

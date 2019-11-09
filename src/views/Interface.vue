@@ -33,7 +33,7 @@ export default createComponent({
         AccountCard
     },
     setup(props: object, context: SetupContext) {
-        if (store.state.wallet.sessions === null) {
+        if (store.state.wallet.currentSession === null) {
             throw new Error(
                 context.root.$t("common.error.noSession").toString()
             );

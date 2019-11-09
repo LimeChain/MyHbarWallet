@@ -361,7 +361,7 @@ export default createComponent({
                     }
                 } else if (
                     error.name === "TransportStatusError" &&
-                    store.state.wallet.session.wallet.getLoginMethod() ===
+                    store.state.wallet.currentSession.wallet.getLoginMethod() ===
                         LoginMethod.LedgerNanoS
                 ) {
                     store.dispatch(HANDLE_LEDGER_ERROR, {

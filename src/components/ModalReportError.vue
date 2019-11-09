@@ -86,8 +86,8 @@ export default createComponent({
         const ua = new UAParser(navigator.userAgent);
 
         const account = computed(() => {
-            return store.state.wallet.session != null
-                ? store.state.wallet.session.account
+            return store.state.wallet.currentSession != null
+                ? store.state.wallet.currentSession.account
                 : null;
         });
 

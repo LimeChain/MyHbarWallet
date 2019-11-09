@@ -223,13 +223,13 @@ export default createComponent({
         }
 
         async function handleUpload(file: Uint8Array): Promise<void> {
-            if (!store.state.wallet.session) {
+            if (!store.state.wallet.currentSession) {
                 throw new Error(
                     context.root.$t("common.error.noSession").toString()
                 );
             }
 
-            const client = store.state.wallet.session.client;
+            const client = store.state.wallet.currentSession.client;
             if (file == null) {
                 throw new Error(
                     context.root.$t("uploadFile.errors.earlyUpload").toString()
@@ -269,7 +269,7 @@ export default createComponent({
             chunks: Uint8Array[],
             client: object
         ): Promise<FileId> {
-            if (!store.state.wallet.session) {
+            if (!store.state.wallet.currentSession) {
                 throw new Error("session should not be null");
             }
 
@@ -280,7 +280,7 @@ export default createComponent({
             state.isBusy = true;
 
             const receipt = ref<TransactionReceipt | null>(null);
-            const publicKey = (await store.state.wallet.session.wallet.getPublicKey()) as import("@hashgraph/sdk").Ed25519PublicKey;
+            const publicKey = (await store.state.wallet.currentSession.wallet.getPublicKey()) as import("@hashgraph/sdk").Ed25519PublicKey;
 
             if (!publicKey) {
                 throw new Error(

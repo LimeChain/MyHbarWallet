@@ -12,6 +12,7 @@ import {
     REFRESH_BALANCE,
     REFRESH_BALANCE_AND_RATE,
     REFRESH_EXCHANGE_RATE,
+    CHANGE_SESSION as CHANGE_SESSION_ACTION,
     CHANGE_SESSION
 } from "../actions";
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
@@ -260,6 +261,13 @@ export default {
         async [LOG_OUT_ACTION]({ commit }: ActionContext<State, RootState>) {
             commit(SET_HAS_BEEN_TO_INTERFACE, false);
             commit(LOG_OUT);
+        },
+        async [CHANGE_SESSION_ACTION](
+            { dispatch, commit }: ActionContext<State, RootState>,
+            session: Session
+        ) {
+            commit(CHANGE_SESSION, session);
+            await dispatch(REFRESH_BALANCE_AND_RATE);
         }
     }
 };

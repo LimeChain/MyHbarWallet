@@ -157,13 +157,13 @@ export default createComponent({
         }
 
         async function handleDownloadClick(): Promise<void> {
-            if (!store.state.wallet.session) {
+            if (!store.state.wallet.currentSession) {
                 throw new Error(
                     context.root.$t("common.error.noSession").toString()
                 );
             }
 
-            const client = store.state.wallet.session.client;
+            const client = store.state.wallet.currentSession.client;
             client.setMaxQueryPayment(100000000);
             try {
                 const { FileContentsQuery, Client } = await (import(
@@ -200,12 +200,12 @@ export default createComponent({
         const fileLink = ref<HTMLAnchorElement | null>(null);
 
         async function triggerDownload(): Promise<void> {
-            if (!store.state.wallet.session) {
+            if (!store.state.wallet.currentSession) {
                 throw new Error(
                     context.root.$t("common.error.noSession").toString()
                 );
             }
-            const client = store.state.wallet.session.client;
+            const client = store.state.wallet.currentSession.client;
             client.setMaxQueryPayment(100000000);
             try {
                 const { FileContentsQuery, Client } = await (import(

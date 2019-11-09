@@ -6,9 +6,24 @@
                 <div class="title">
                     {{ $t("accountCard.account") }}
                 </div>
-                <div class="subtitle">
+                <div class="account-num">
                     <span>{{ shard }}.{{ realm }}.</span
                     ><strong>{{ account }}</strong>
+                    <span v-if="store.state.wallet.sessions.length > 1"
+                        >...</span
+                    >
+                </div>
+                <div class="multi-login-icons">
+                    <MaterialDesignIcon
+                        :icon="mdiChevronDown"
+                        class="down-icon"
+                        @click="handleChangeSession"
+                    />
+                    <MaterialDesignIcon
+                        :icon="mdiPlus"
+                        class="plus-icon"
+                        @click="handleAddSession"
+                    />
                 </div>
             </div>
             <div class="actions">
@@ -55,7 +70,7 @@
 
 <script lang="ts">
 import MaterialDesignIcon from "../components/MaterialDesignIcon.vue";
-import { mdiQrcode, mdiKey } from "@mdi/js";
+import { mdiQrcode, mdiKey, mdiPlus, mdiChevronDown } from "@mdi/js";
 import Tooltip from "../components/Tooltip.vue";
 import {
     computed,
@@ -68,22 +83,18 @@ import ModalViewAccountId from "../components/ModalViewAccountId.vue";
 import ExportKeystoreButton from "./ExportKeystoreButton.vue";
 import ModalViewKeys from "./ModalViewKeys.vue";
 import store from "../store";
+import { LOG_IN, CHANGE_SESSION } from "../store/actions";
+import { Id, Session, Sessions } from "../store/modules/wallet";
+import SoftwareWallet from "../wallets/software/SoftwareWallet";
+import { LoginMethod } from "../wallets/Wallet";
+import settings from "../settings";
 
 async function getPrivateKey(): Promise<
     import("@hashgraph/sdk").Ed25519PrivateKey | null
 > {
-    if (
-        store.state.wallet.sessions !== null &&
-        store.state.wallet.currentSession !== null
-    ) {
-        if (
-            store.state.wallet.sessions
-                .getSession(store.state.wallet.currentSession.account.account)
-                .wallet.hasPrivateKey()
-        ) {
-            return store.state.wallet.sessions
-                .getSession(store.state.wallet.currentSession.account.account)
-                .wallet.getPrivateKey();
+    if (store.state.wallet.currentSession !== null) {
+        if (store.state.wallet.currentSession.wallet.hasPrivateKey()) {
+            return store.state.wallet.currentSession.wallet.getPrivateKey();
         }
     }
 
@@ -93,13 +104,8 @@ async function getPrivateKey(): Promise<
 async function getPublicKey(): Promise<
     import("@hashgraph/sdk").PublicKey | null
 > {
-    if (
-        store.state.wallet.sessions !== null &&
-        store.state.wallet.currentSession !== null
-    ) {
-        return store.state.wallet.sessions
-            .getSession(store.state.wallet.currentSession.account.account)
-            .wallet.getPublicKey();
+    if (store.state.wallet.currentSession !== null) {
+        return store.state.wallet.currentSession.wallet.getPublicKey();
     }
 
     return null;
@@ -156,13 +162,8 @@ export default createComponent({
         );
 
         const hasPrivateKey = computed(() =>
-            store.state.wallet.sessions !== null &&
             store.state.wallet.currentSession !== null
-                ? store.state.wallet.sessions
-                      .getSession(
-                          store.state.wallet.currentSession.account.account
-                      )
-                      .wallet.hasPrivateKey()
+                ? store.state.wallet.currentSession.wallet.hasPrivateKey()
                 : false
         );
         const hasPublicKey = computed(() => state.publicKey !== null);
@@ -188,6 +189,60 @@ export default createComponent({
             return "";
         });
 
+        async function handleAddSession(): Promise<void> {
+            const { Client } = await (import("@hashgraph/sdk") as Promise<
+                typeof import("@hashgraph/sdk")
+            >);
+            const account: Id = { realm: 0, shard: 0, account: 4 };
+            const wallet = new SoftwareWallet(
+                LoginMethod.PrivateKey,
+                state.privateKey as import("@hashgraph/sdk").Ed25519PrivateKey,
+                state.publicKey as import("@hashgraph/sdk").Ed25519PublicKey
+            );
+
+            const operator = {
+                account,
+                privateKey: state.privateKey as import("@hashgraph/sdk").Ed25519PrivateKey
+            } as import("@hashgraph/sdk").Operator;
+
+            const client = new Client({
+                nodes: {
+                    [settings.network.proxy]: {
+                        shard: 0,
+                        realm: 0,
+                        account: 3
+                    }
+                },
+                operator
+            });
+            await store.dispatch(LOG_IN, {
+                account,
+                wallet,
+                client
+            });
+            console.log(store.state.wallet.sessions);
+        }
+
+        async function handleChangeSession(): Promise<void> {
+            if (
+                (store.state.wallet.currentSession as Session).account
+                    .account == 2
+            ) {
+                const session = (store.state.wallet.sessions as Sessions<
+                    Session
+                >).getSession(4) as Session;
+                await store.dispatch(CHANGE_SESSION, session);
+            } else if (
+                (store.state.wallet.currentSession as Session).account
+                    .account == 4
+            ) {
+                const session = (store.state.wallet.sessions as Sessions<
+                    Session
+                >).getSession(2) as Session;
+                await store.dispatch(CHANGE_SESSION, session);
+            }
+        }
+
         function showKeys(): void {
             state.viewKeysIsOpen = true;
         }
@@ -199,6 +254,8 @@ export default createComponent({
         return {
             mdiQrcode,
             mdiKey,
+            mdiPlus,
+            mdiChevronDown,
             state,
             hasPrivateKey,
             hasPublicKey,
@@ -206,7 +263,10 @@ export default createComponent({
             publicKeyString,
             hasKeys,
             showKeys,
-            showQrCode
+            showQrCode,
+            handleAddSession,
+            store,
+            handleChangeSession
         };
     }
 });
@@ -253,7 +313,8 @@ export default createComponent({
     }
 }
 
-.subtitle {
+.account-num {
+    display: inline-block;
     font-size: 14px;
     user-select: none;
 
@@ -285,6 +346,10 @@ export default createComponent({
             display: none;
         }
     }
+}
+
+.multi-login-icons {
+    display: inline-block;
 }
 
 .actions {

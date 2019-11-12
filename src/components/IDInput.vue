@@ -7,8 +7,9 @@
         :label="label"
         :valid="valid || partialValid"
         :error="state.errorMessage"
-        :placeholder="placeholderText"
-        :compact="compact"
+        :placeholder="
+            file ? 'shard.realm.file or file' : $t('common.accountSyntax')
+        "
         @input="handleInput"
         @click.native.stop
     />
@@ -103,17 +104,17 @@ export default createComponent({
                 }
 
                 if (props.file) {
-                    state.file = new FileId({
-                        shard: parseInt(parts[ 0 ]),
-                        realm: parseInt(parts[ 1 ]),
-                        file: parseInt(parts[ 2 ])
-                    });
+                    state.file = {
+                        shard: parseInt(parts[0]),
+                        realm: parseInt(parts[1]),
+                        file: parseInt(parts[2])
+                    };
                 } else {
-                    state.account = new AccountId({
-                        shard: parseInt(parts[ 0 ]),
-                        realm: parseInt(parts[ 1 ]),
-                        account: parseInt(parts[ 2 ])
-                    });
+                    state.account = {
+                        shard: parseInt(parts[0]),
+                        realm: parseInt(parts[1]),
+                        account: parseInt(parts[2])
+                    };
                 }
             } else if (partialValid.value) {
                 // Check that each ID part is a safe integer
@@ -150,14 +151,14 @@ export default createComponent({
 
         watch(
             () => props.error,
-            (newVal) => {
+            newVal => {
                 if (newVal && props.error) state.errorMessage = props.error;
             }
         );
 
         watch(
             () => props.isOpen,
-            (newVal) => {
+            newVal => {
                 // input.value is not set until after modal is open
                 Vue.nextTick(() => {
                     if (newVal && input.value) {

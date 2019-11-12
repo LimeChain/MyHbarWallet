@@ -45,7 +45,6 @@
 <script lang="ts">
 import {
     createComponent,
-    reactive,
     watch,
     SetupContext,
     computed,

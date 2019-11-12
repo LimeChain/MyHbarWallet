@@ -77,11 +77,39 @@ export interface Id {
     account: number;
 }
 
-export class Sessions<T extends Session> {
+export class Sessions<T extends Session> implements IterableIterator<T> {
     private sessions: { [key: number]: T } = {};
 
+    private pointer = 0;
+    public length = 0;
+
+    public next(): IteratorResult<T> {
+        if (this.pointer < this.length) {
+            return {
+                done: false,
+                value: this.sessions[this.pointer++]
+            };
+        } else {
+            return {
+                done: true,
+                value: null
+            };
+        }
+    }
+
+    public [Symbol.iterator](): IterableIterator<T> {
+        return this;
+    }
+
     public setSession(key: number, session: T): void {
-        this.sessions[key] = session;
+        if (!this.sessions[key]) {
+            this.sessions[key] = session;
+            this.length += 1;
+            console.log("Account added to Sessions");
+            return;
+        }
+        console.log(this.sessions);
+        console.log("Account already in Sessions");
     }
 
     public getSession(key: number): T {
@@ -165,6 +193,7 @@ export default {
     mutations: {
         [LOG_IN](state: State, session: Session): void {
             if (state.sessions === null) {
+                console.log("New Sessions Object");
                 state.sessions = new Sessions();
             }
             state.sessions.setSession(session.account["account"], session);

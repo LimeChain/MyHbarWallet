@@ -9,9 +9,6 @@
                 <div class="account-num">
                     <span>{{ shard }}.{{ realm }}.</span
                     ><strong>{{ account }}</strong>
-                    <span v-if="store.state.wallet.sessions.length > 1"
-                        >...</span
-                    >
                 </div>
                 <div class="multi-login-icons">
                     <MaterialDesignIcon
@@ -83,11 +80,7 @@ import ModalViewAccountId from "../components/ModalViewAccountId.vue";
 import ExportKeystoreButton from "./ExportKeystoreButton.vue";
 import ModalViewKeys from "./ModalViewKeys.vue";
 import store from "../store";
-import { LOG_IN, CHANGE_SESSION } from "../store/actions";
-import { Id, Session, Sessions } from "../store/modules/wallet";
-import SoftwareWallet from "../wallets/software/SoftwareWallet";
-import { LoginMethod } from "../wallets/Wallet";
-import settings from "../settings";
+import { Sessions, Session } from "../store/modules/wallet";
 
 async function getPrivateKey(): Promise<
     import("@hashgraph/sdk").Ed25519PrivateKey | null
@@ -131,7 +124,7 @@ export default createComponent({
         realm: Number,
         account: Number
     },
-    setup() {
+    setup(props: Props, context) {
         const state = reactive({
             viewAccountQrCodeIsOpen: false,
             viewKeysIsOpen: false,
@@ -189,58 +182,20 @@ export default createComponent({
             return "";
         });
 
-        async function handleAddSession(): Promise<void> {
-            const { Client } = await (import("@hashgraph/sdk") as Promise<
-                typeof import("@hashgraph/sdk")
-            >);
-            const account: Id = { realm: 0, shard: 0, account: 4 };
-            const wallet = new SoftwareWallet(
-                LoginMethod.PrivateKey,
-                state.privateKey as import("@hashgraph/sdk").Ed25519PrivateKey,
-                state.publicKey as import("@hashgraph/sdk").Ed25519PublicKey
-            );
-
-            const operator = {
-                account,
-                privateKey: state.privateKey as import("@hashgraph/sdk").Ed25519PrivateKey
-            } as import("@hashgraph/sdk").Operator;
-
-            const client = new Client({
-                nodes: {
-                    [settings.network.proxy]: {
-                        shard: 0,
-                        realm: 0,
-                        account: 3
-                    }
-                },
-                operator
-            });
-            await store.dispatch(LOG_IN, {
-                account,
-                wallet,
-                client
-            });
+        function handleAddSession(): void {
             console.log(store.state.wallet.sessions);
+            console.log(
+                (store.state.wallet.sessions as Sessions<Session>).length
+            );
+            context.emit("Add", state.publicKey, state.privateKey);
         }
 
-        async function handleChangeSession(): Promise<void> {
-            if (
-                (store.state.wallet.currentSession as Session).account
-                    .account == 2
-            ) {
-                const session = (store.state.wallet.sessions as Sessions<
-                    Session
-                >).getSession(4) as Session;
-                await store.dispatch(CHANGE_SESSION, session);
-            } else if (
-                (store.state.wallet.currentSession as Session).account
-                    .account == 4
-            ) {
-                const session = (store.state.wallet.sessions as Sessions<
-                    Session
-                >).getSession(2) as Session;
-                await store.dispatch(CHANGE_SESSION, session);
-            }
+        function handleChangeSession(): void {
+            context.emit("ChangeSession");
+        }
+
+        function handleOpenSessionList(): void {
+            context.emit("List");
         }
 
         function showKeys(): void {
@@ -266,7 +221,8 @@ export default createComponent({
             showQrCode,
             handleAddSession,
             store,
-            handleChangeSession
+            handleChangeSession,
+            handleOpenSessionList
         };
     }
 });

@@ -19,7 +19,7 @@
                     <MaterialDesignIcon
                         :icon="mdiPlus"
                         class="plus-icon"
-                        @click="handleAddSession"
+                        @click="handleOpenSessionList"
                     />
                 </div>
             </div>

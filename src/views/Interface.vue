@@ -34,11 +34,8 @@ import {
     reactive
 } from "@vue/composition-api";
 import store from "../store";
-import { LOG_IN, CHANGE_SESSION } from "../store/actions";
-import { Id, Session, Sessions } from "../store/modules/wallet";
-import SoftwareWallet from "../wallets/software/SoftwareWallet";
-import { LoginMethod } from "../wallets/Wallet";
-import settings from "../settings";
+import { CHANGE_SESSION } from "../store/actions";
+import { Session, Sessions } from "../store/modules/wallet";
 import ModalAccessAccount from "../components/ModalAccessAccount.vue";
 
 interface State {
@@ -76,43 +73,16 @@ export default createComponent({
                 : null
         );
 
-        // async
         function handleAddSession(): void {
             state.modalAccessAccountState.isOpen = true;
-            //     publicKey: import("@hashgraph/sdk").Ed25519PublicKey,
-            //     privateKey: import("@hashgraph/sdk").Ed25519PrivateKey
-            // ): Promise<void> {
-            // const { Client } = await (import("@hashgraph/sdk") as Promise<
-            //     typeof import("@hashgraph/sdk")
-            // >);
-            // const account: Id = { realm: 0, shard: 0, account: 4 };
-            // const wallet = new SoftwareWallet(
-            //     LoginMethod.PrivateKey,
-            //     privateKey as import("@hashgraph/sdk").Ed25519PrivateKey,
-            //     publicKey as import("@hashgraph/sdk").Ed25519PublicKey
-            // );
+        }
 
-            // const operator = {
-            //     account,
-            //     privateKey: privateKey as import("@hashgraph/sdk").Ed25519PrivateKey
-            // } as import("@hashgraph/sdk").Operator;
-
-            // const client = new Client({
-            //     nodes: {
-            //         [settings.network.proxy]: {
-            //             shard: 0,
-            //             realm: 0,
-            //             account: 3
-            //         }
-            //     },
-            //     operator
-            // });
-            // await store.dispatch(LOG_IN, {
-            //     account,
-            //     wallet,
-            //     client
-            // });
-            // console.log(store.state.wallet.sessions);
+        function handleOpenSessionList(): void {
+            console.log(
+                (store.state.wallet.sessions as Sessions<
+                    Session
+                >).getSessionList()
+            );
         }
 
         async function handleChangeSession(): Promise<void> {

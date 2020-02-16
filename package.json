@@ -22,7 +22,7 @@
     },
     "main": "background.js",
     "dependencies": {
-        "@hashgraph/sdk": "^1.1.5",
+        "@hashgraph/sdk": "^1.1.6",
         "@ledgerhq/errors": "^5.9.0",
         "@ledgerhq/hw-transport": "^5.9.0",
         "@ledgerhq/hw-transport-u2f": "^5.9.0",

@@ -75,7 +75,7 @@ import { formatHbar, validateHbar } from "../formatter";
 import OptionalMemoField from "../components/OptionalMemoField.vue";
 import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
 import { LoginMethod } from "../wallets/Wallet";
-import { AccountId } from "@hashgraph/sdk";
+import { AccountId, Hbar } from "@hashgraph/sdk";
 import { actions, getters, store } from "../store";
 
 interface State {
@@ -89,10 +89,11 @@ interface State {
     summaryIsOpen: boolean;
     idValid: boolean;
     modalSuccessState: ModalSuccessState;
+    estimatedFee: Hbar;
 }
 
-const estimatedFeeHbar = getters.ESTIMATED_FEE_HBAR();
-const estimatedFeeTinybar = getters.ESTIMATED_FEE_TINYBAR();
+// const estimatedFeeHbar = getters.ESTIMATED_FEE_HBAR();
+// const estimatedFeeTinybar = getters.ESTIMATED_FEE_TINYBAR();
 
 export default createComponent({
     components: {
@@ -116,6 +117,7 @@ export default createComponent({
             amountErrorMessage: "",
             summaryIsOpen: false,
             idValid: false,
+            estimatedFee: new Hbar(0),
             modalSuccessState: {
                 isOpen: false,
                 hasAction: false
@@ -142,6 +144,45 @@ export default createComponent({
                 }
             }
         );
+
+        async function getTransaction(): Promise<import("@hashgraph/sdk").CryptoTransferTransaction> {
+            if (store.state.wallet.session == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullAccountOnInterface")
+                    .toString());
+            }
+
+            if (state.account == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullAccountOnInterface")
+                    .toString());
+            }
+
+            if (state.amount == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullTransferAmount")
+                    .toString());
+            }
+
+            const recipient: AccountId | null = state.account;
+
+            const sendAmountTinybar = new BigNumber(state.amount).multipliedBy(getValueOfUnit(Unit.Hbar));
+
+            const { CryptoTransferTransaction, Hbar, Client } = await import("@hashgraph/sdk");
+
+            const tx = new CryptoTransferTransaction()
+                .addSender(
+                    store.state.wallet.session.account,
+                    Hbar.fromTinybar(sendAmountTinybar)
+                )
+                .addRecipient(recipient, Hbar.fromTinybar(sendAmountTinybar));
+
+            if (state.memo !== "" && state.memo != null) {
+                tx.setTransactionMemo(state.memo);
+            }
+
+            return tx;
+        }
 
         function handleValid(valid: boolean): void {
             state.idValid = valid;
@@ -195,11 +236,23 @@ export default createComponent({
             },
             {
                 description: context.root.$t("common.estimatedFee"),
-                value: estimatedFeeHbar
+                value: new BigNumber(state.estimatedFee.asTinybar()).dividedBy(getValueOfUnit(Unit.Hbar))
             }
         ] as Item[]);
 
-        function handleShowSummary(): void {
+        async function handleShowSummary(): Promise<void> {
+            if (store.state.wallet.session == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullAccountOnInterface")
+                    .toString());
+            }
+
+            const client = store.state.wallet.session.client;
+
+            const tx = await getTransaction();
+            const estimatedFee = await tx.getCost(client);
+
+            state.estimatedFee = estimatedFee;
             state.summaryIsOpen = true;
         }
 
@@ -266,45 +319,8 @@ export default createComponent({
             const client = store.state.wallet.session.client;
 
             try {
-                if (state.account == null) {
-                    throw new Error(context.root
-                        .$t("common.error.nullAccountOnInterface")
-                        .toString());
-                }
-
-                if (state.amount == null) {
-                    throw new Error(context.root
-                        .$t("common.error.nullTransferAmount")
-                        .toString());
-                }
-
-                const recipient: AccountId | null = state.account;
-
-                const sendAmountTinybar = new BigNumber(state.amount).multipliedBy(getValueOfUnit(Unit.Hbar));
-
-                const { CryptoTransferTransaction, Hbar, Client } = await import("@hashgraph/sdk");
-
-                // Max Transaction Fee, otherwise known as Transaction Fee,
-                // is the max of 1 Hbar and the user's remaining balance
-                // Oh also, check for null balance to appease typescript
-                const safeBalance =
-                    store.state.wallet.balance == null ?
-                        new BigNumber(0) :
-                        store.state.wallet.balance;
-
-                const maxTxFeeTinybar = getters.MAX_FEE_TINYBAR(safeBalance.minus(sendAmountTinybar.plus(estimatedFeeTinybar)));
-
-                const tx = new CryptoTransferTransaction()
-                    .addSender(
-                        store.state.wallet.session.account,
-                        Hbar.fromTinybar(sendAmountTinybar)
-                    )
-                    .addRecipient(recipient, Hbar.fromTinybar(sendAmountTinybar))
-                    .setMaxTransactionFee(Hbar.fromTinybar(maxTxFeeTinybar));
-
-                if (state.memo !== "" && state.memo != null) {
-                    tx.setTransactionMemo(state.memo);
-                }
+                const tx = await getTransaction();
+                tx.setMaxTransactionFee(state.estimatedFee as unknown as Hbar);
 
                 await (await tx.execute(client)).getReceipt(client);
 

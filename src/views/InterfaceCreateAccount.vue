@@ -77,7 +77,7 @@ import { formatHbar } from "../formatter";
 import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
 import { writeToClipboard } from "../clipboard";
 import { LoginMethod } from "../wallets/Wallet";
-import { BadKeyError } from "@hashgraph/sdk";
+import { BadKeyError, Hbar } from "@hashgraph/sdk";
 
 // const estimatedFeeHbar = store.getters[ESTIMATED_FEE_HBAR];
 // const estimatedFeeTinybar = store.getters[ESTIMATED_FEE_TINYBAR];
@@ -91,6 +91,7 @@ interface State {
     newBalanceError: string;
     account: string;
     isPublicKeyValid: boolean;
+    estimatedFee: import("@hashgraph/sdk").Hbar;
     modalSuccessState: ModalSuccessState;
 }
 
@@ -129,6 +130,7 @@ export default createComponent({
             newBalanceError: "",
             account: "",
             isPublicKeyValid: false,
+            estimatedFee: new Hbar(0),
             modalSuccessState: {
                 isOpen: false,
                 hasAction: true,
@@ -160,9 +162,42 @@ export default createComponent({
                 description: context.root
                     .$t("common.estimatedFee")
                     .toString(),
-                value: getters.ESTIMATED_FEE_HBAR()
+                value: new BigNumber(state.estimatedFee.asTinybar()).dividedBy(getValueOfUnit(Unit.Hbar))
             }
         ] as Item[]);
+
+        async function getTransaction(): Promise<import("@hashgraph/sdk").AccountCreateTransaction> {
+            const { Hbar } = await import("@hashgraph/sdk");
+
+            if (store.state.wallet.session == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullAccountOnInterface")
+                    .toString());
+            }
+
+            const client = store.state.wallet.session.client;
+
+            // The new wallet's initial balance
+            const newBalanceTinybar = new BigNumber(state.newBalance).multipliedBy(getValueOfUnit(Unit.Hbar));
+
+            // The current user's balance
+            const balanceTinybar =
+                store.state.wallet.balance == null ?
+                    new BigNumber(0) :
+                    store.state.wallet.balance;
+
+            const {
+                AccountCreateTransaction,
+                Client,
+                Ed25519PublicKey
+            } = await import("@hashgraph/sdk");
+
+            const key = Ed25519PublicKey.fromString(state.publicKey);
+
+            return new AccountCreateTransaction()
+                .setInitialBalance(Hbar.fromTinybar(newBalanceTinybar))
+                .setKey(key);
+        }
 
         async function handleCreateAccount(): Promise<void> {
             state.isBusy = true;
@@ -178,28 +213,9 @@ export default createComponent({
             const { HederaStatusError, Status, Hbar } = await import("@hashgraph/sdk");
 
             try {
-                // The new wallet's initial balance
-                const newBalanceTinybar = new BigNumber(state.newBalance).multipliedBy(getValueOfUnit(Unit.Hbar));
-
-                // The current user's balance
-                const balanceTinybar =
-                    store.state.wallet.balance == null ?
-                        new BigNumber(0) :
-                        store.state.wallet.balance;
-
-                const {
-                    AccountCreateTransaction,
-                    Client,
-                    Ed25519PublicKey
-                } = await import("@hashgraph/sdk");
-
-                const key = Ed25519PublicKey.fromString(state.publicKey);
-                const maxTxFeeTinybar = getters.MAX_FEE_TINYBAR(balanceTinybar.minus(newBalanceTinybar.plus(getters.ESTIMATED_FEE_TINYBAR())));
-
-                const accountIdIntermediate = (await (await new AccountCreateTransaction()
-                    .setInitialBalance(Hbar.fromTinybar(newBalanceTinybar))
-                    .setMaxTransactionFee(Hbar.fromTinybar(maxTxFeeTinybar))
-                    .setKey(key)
+                const tx = await getTransaction();
+                tx.setMaxTransactionFee(state.estimatedFee as unknown as Hbar);
+                const accountIdIntermediate = (await (await tx
                     .execute(client))
                     .getReceipt(client))
                     .getAccountId();
@@ -286,7 +302,19 @@ export default createComponent({
             state.account = "";
         }
 
-        function handleShowSummary(): void {
+        async function handleShowSummary(): Promise<void> {
+            if (store.state.wallet.session == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullAccountOnInterface")
+                    .toString());
+            }
+
+            const client = store.state.wallet.session.client;
+
+            const tx = await getTransaction();
+            const estimatedFee = await tx.getCost(client);
+
+            state.estimatedFee = estimatedFee;
             state.summaryModalIsOpen = true;
         }
 

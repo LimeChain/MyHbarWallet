@@ -30,7 +30,9 @@ const plugins = [
         COMMIT_HASH: `"${hash.toString().trim()}"`,
         IS_ELECTRON: is_electron,
         HEDERA_NETWORK: `"${process.env.HEDERA_NETWORK || "testnet"}"`,
-        MOONPAY_API_KEY: `"${process.env.MOONPAY_API_KEY || "pk_test_ypQ0mhShRarhXwAbGvdLfxAL89AtfQ"}"`
+        MOONPAY_API_KEY: `"${process.env.MOONPAY_API_KEY || "pk_test_ypQ0mhShRarhXwAbGvdLfxAL89AtfQ"}"`,
+        ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT: `"${process.env.ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT || "0.0.1894"}"`,
+        ETHEREUM_BRIDGE_TOPIC_ID: `"${process.env.ETHEREUM_BRIDGE_TOPIC_ID || "0.0.125567"}"`
     }),
     new StatsPlugin("stats.json")
 ];

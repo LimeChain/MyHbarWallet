@@ -35,6 +35,12 @@ import {LoginMethod} from "../wallets/Wallet";
                 :title="$t('interfaceNavigation.tools')"
                 :routes="toolsRoutes"
             />
+
+            <InterfaceNavigationSection
+                :icon="mdiEthereum"
+                :title="$t('interfaceNavigation.hederaEthereumBridge')"
+                :routes="hederaEthereumBridgeRoutes"
+            />
         </nav>
         <div
             :class="classObject"
@@ -45,7 +51,7 @@ import {LoginMethod} from "../wallets/Wallet";
 </template>
 
 <script lang="ts">
-import { mdiClose, mdiCoins, mdiFileDocumentBoxMultipleOutline, mdiToolbox } from "@mdi/js";
+import { mdiClose, mdiCoins, mdiFileDocumentBoxMultipleOutline, mdiToolbox, mdiEthereum } from "@mdi/js";
 import { computed, defineComponent } from "@vue/composition-api";
 
 import { LoginMethod } from "../../domain/wallets/wallet";
@@ -124,6 +130,17 @@ export default defineComponent({
             }
         ];
 
+        const hederaEthereumBridgeRoutes = [
+            {
+                name: "wrap-hbar",
+                label: context.root.$t("interfaceNavigation.wrapHbar").toString()
+            },
+            {
+                name: "unwrap-whbar",
+                label: context.root.$t("interfaceNavigation.unwrapWHbar").toString()
+            }
+        ];
+
         const menuOpen = computed(() => store.state.ui.interfaceMenu.isOpen);
 
         const classObject = computed(() => {
@@ -138,9 +155,11 @@ export default defineComponent({
             classObject,
             filesRoutes,
             toolsRoutes,
+            hederaEthereumBridgeRoutes,
             mdiFileDocumentBoxMultipleOutline,
             mdiCoins,
             mdiToolbox,
+            mdiEthereum,
             handleClick
         };
     }

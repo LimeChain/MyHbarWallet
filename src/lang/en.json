@@ -382,7 +382,7 @@
     "common.message": "Message",
     "common.menu": "Menu",
     "common.memo": "Memo",
-    "common.gasPrice": "Gas Price",
+    "common.gasPrice": "Gas Price (gwei)",
     "common.logout": "Logout",
     "common.interface": "Interface",
     "common.idTooBig": "ID out of range",

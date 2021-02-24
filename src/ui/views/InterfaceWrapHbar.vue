@@ -21,7 +21,7 @@
             @input="handleEthAddressInput"
         />
 
-        <OptionalGasPriceField v-model.trim="state.gasPrice" />
+        <OptionalGasPriceField v-model.lazy="state.gasPrice" v-model.trim="state.gasPrice" @input="handleGasPriceInput" />
 
         <template v-slot:footer>
             <Button
@@ -55,7 +55,7 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
+import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
 import { AccountId } from "@hashgraph/sdk";
 import Web3 from "web3";
@@ -71,6 +71,9 @@ import OptionalGasPriceField from "../components/OptionalGasPriceField.vue";
 import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
 import { LoginMethod } from "../../domain/wallets/wallet";
 import { actions, getters } from "../store";
+import { txMetadata } from "../../service/hedera-validator";
+import { gasPriceOracle } from "../../service/etherscan";
+let timeout: any = null;
 
 interface State {
     amount: string | null;
@@ -86,8 +89,8 @@ interface State {
     modalSuccessState: ModalSuccessState;
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
-    gasPrice: string | null;
-    txReimbursement: string | null;
+    gasPrice: string;
+    txFee: string;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -102,8 +105,8 @@ function getAccountFromString(accountString: string): AccountId {
     return new AccountId({ shard: parseInt(parts[ 0 ]), realm: parseInt(parts[ 1 ]), account: parseInt(parts[ 2 ]) });
 }
 
-function constructMemo(address: string | null, txReimbursement: string | null, gasPriceGwei: string | null): string {
-    return `${address}-${txReimbursement}-${gasPriceGwei}`;
+function constructMemo(address: string | null, txFee: string | null, gasPriceGwei: string | null): string {
+    return `${address}-${txFee}-${gasPriceGwei}`;
 }
 
 export default defineComponent({
@@ -147,7 +150,14 @@ export default defineComponent({
             ethAddress: "",
             ethAddressErrorMessage: "",
             gasPrice: "",
-            txReimbursement: "600000000"
+            txFee: ""
+        });
+
+        onMounted(async() => {
+            const gasPriceInfo = await gasPriceOracle();
+            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
+            const metadata = await txMetadata(state.gasPrice);
+            state.txFee = new BigNumber(metadata.txFee).toString();
         });
 
         state.account = getAccountFromString(ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT);
@@ -161,6 +171,15 @@ export default defineComponent({
 
         function handleEthAddressInput(value: string | null): void {
             state.ethAddress = value;
+        }
+
+        async function handleGasPriceInput(value: string): Promise<void> {
+            clearTimeout(timeout);
+            timeout = setTimeout(async() => {
+                state.gasPrice = value;
+                const metadata = await txMetadata(state.gasPrice);
+                state.txFee = new BigNumber(metadata.txFee).toString();
+            }, 300);
         }
 
         watch(
@@ -238,8 +257,8 @@ export default defineComponent({
             }
         ]);
 
-        function handleShowSummary(): void {
-            console.log(constructMemo(state.ethAddress, state.txReimbursement, state.gasPrice));
+        async function handleShowSummary(): Promise<void> {
+            console.log(constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice));
             state.modalSummaryState.account = summaryAccount.value!;
             state.modalSummaryState.amount = summaryAmount.value!;
             const items: readonly Item[] = summaryItems.value!;
@@ -376,7 +395,7 @@ export default defineComponent({
                     .addRecipient(recipient, sendAmount)
                     .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
 
-                state.memo = constructMemo(state.ethAddress, state.txReimbursement, state.gasPrice);
+                state.memo = constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice);
 
                 if (state.memo == null || state.memo === "") {
                     state.memo = " "; // Hack for Nano X paging
@@ -415,11 +434,10 @@ export default defineComponent({
             state.modalSuccessState.isOpen = false;
             state.isBusy = false;
             state.amount = "";
-            state.account = null;
-            state.accountString = "";
-            (idInput.value! as IdInputElement).clear();
             state.memo = "";
-            state.accountString = "";
+            state.ethAddress = "";
+            state.gasPrice = "0";
+            state.txFee = "";
         }
 
         return {
@@ -441,7 +459,8 @@ export default defineComponent({
             handleValid,
             handleAccount,
             isEthAddressValid,
-            handleEthAddressInput
+            handleEthAddressInput,
+            handleGasPriceInput
         };
     }
 });

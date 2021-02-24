@@ -54,9 +54,15 @@ export default defineComponent({
     },
     props: { value: { type: String, default: "" }},
     setup(props, context) {
-        const state = reactive({ showGasPrice: false });
+        const state = reactive({ showGasPrice: false, gasPrice: "" });
 
-        function handleInput(gasPrice: string): void {
+        function handleInput(gasPrice: string, event: Event): void {
+            if (!/^\d*(\.\d+)?$/.test(gasPrice)) {
+                gasPrice = state.gasPrice || "";
+            }
+
+            state.gasPrice = gasPrice;
+            (event.target as HTMLInputElement).value = gasPrice.replace(/\D/, "");
             context.emit("input", gasPrice);
         }
 
@@ -68,7 +74,7 @@ export default defineComponent({
                     ((context as unknown) as Context).refs.input.focus();
                 }
             } else {
-                context.emit("input", "");
+                context.emit("input", state.gasPrice || "0");
             }
         }
 

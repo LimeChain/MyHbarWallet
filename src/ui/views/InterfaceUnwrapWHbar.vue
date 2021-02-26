@@ -22,6 +22,8 @@
             @input="handleAccount"
         />
 
+        <OptionalGasPriceField v-model.lazy="state.gasPrice" v-model.trim="state.gasPrice" @input="handleGasPriceInput" />
+
         <template v-slot:footer>
             <Button
                 :busy="state.isBusy"
@@ -54,7 +56,7 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
+import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
 import { AccountId } from "@hashgraph/sdk";
 
@@ -69,9 +71,18 @@ import OptionalMemoField from "../components/OptionalMemoField.vue";
 import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
 import { LoginMethod } from "../../domain/wallets/wallet";
 import { actions, getters } from "../store";
+import { gasPriceOracle } from "../../service/etherscan";
+import OptionalGasPriceField from "../components/OptionalGasPriceField.vue";
+import Web3 from "web3";
+import Bridge from "../../contracts/bridge.json";
+import Whbar from "../../contracts/whbar.json";
+
+let timeout: any = null;
+let web3: any;
+declare const window: any;
 
 interface State {
-    amount: string | null;
+    amount: string;
     account: AccountId | null;
     accountString: string | null;
     memo: string | null;
@@ -82,10 +93,18 @@ interface State {
     transactionId: string;
     modalSummaryState: ModalSummaryState;
     modalSuccessState: ModalSuccessState;
+    gasPrice: string;
+    web3Provider: any;
+    bridge: any;
+    whbar: any;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
 const estimatedFeeTinybar = estimatedFeeHbar.multipliedBy(getValueOfUnit(Unit.Hbar));
+
+// Defined in vue.config.js.
+declare const BRIDGE_CONTRACT_ADDRESS: string;
+declare const WHBAR_CONTRACT_ADDRESS: string;
 
 export default defineComponent({
     components: {
@@ -95,7 +114,8 @@ export default defineComponent({
         ModalSuccess,
         ModalFeeSummary,
         OptionalMemoField,
-        IDInput
+        IDInput,
+        OptionalGasPriceField
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
@@ -124,7 +144,16 @@ export default defineComponent({
             modalSuccessState: {
                 isOpen: false,
                 hasAction: false
-            }
+            },
+            gasPrice: "",
+            web3Provider: null,
+            bridge: null,
+            whbar: null
+        });
+
+        onMounted(async() => {
+            const gasPriceInfo = await gasPriceOracle();
+            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
         });
 
         const idInput: Ref<IdInputElement | null> = ref(null);
@@ -145,6 +174,37 @@ export default defineComponent({
 
         function handleValid(valid: boolean): void {
             state.idValid = valid;
+        }
+
+        async function handleGasPriceInput(value: string): Promise<void> {
+            clearTimeout(timeout);
+            timeout = setTimeout(async() => {
+                state.gasPrice = value;
+            }, 300);
+        }
+
+        async function initWeb3(): Promise<void> {
+            if (window.ethereum) {
+                state.web3Provider = window.ethereum;
+                try {
+                    await window.ethereum.enable();
+                    web3 = new Web3(state.web3Provider);
+                } catch (error) {
+                    console.error(context.root.$t("interfaceUnwrapWHbar.userDeniedAccess").toString());
+                }
+            } else if (window.web3) {
+                state.web3Provider = window.web3.givenProvider;
+                web3 = new Web3(state.web3Provider);
+            } else {
+                console.error(context.root.$t("interfaceUnwrapWHbar.noWeb3Provider").toString());
+            }
+        }
+
+        async function initContracts(): Promise<void> {
+            state.bridge = await new web3.eth.Contract(Bridge.abi, BRIDGE_CONTRACT_ADDRESS);
+            state.whbar = await new web3.eth.Contract(Whbar.abi, WHBAR_CONTRACT_ADDRESS);
+            state.bridge.setProvider(state.web3Provider);
+            state.whbar.setProvider(state.web3Provider);
         }
 
         const isAmountValid = computed(() => {
@@ -200,7 +260,9 @@ export default defineComponent({
             }
         ]);
 
-        function handleShowSummary(): void {
+        async function handleShowSummary(): Promise<void> {
+            await initWeb3();
+            await initContracts();
             state.modalSummaryState.account = summaryAccount.value!;
             state.modalSummaryState.amount = summaryAmount.value!;
             const items: readonly Item[] = summaryItems.value!;
@@ -310,64 +372,15 @@ export default defineComponent({
         async function handleSendTransfer(): Promise<void> {
             state.isBusy = true;
             state.modalSummaryState.isBusy = true;
-            const client = getters.currentUser().session.client;
+            const accounts = await web3.eth.getAccounts();
+            const whbarsAmount = parseInt(state.amount) * 10 ** 8;
 
-            try {
-                if (state.account == null) {
-                    throw new Error(context.root
-                        .$t("common.error.nullAccountOnInterface")
-                        .toString());
-                }
+            await state.whbar.methods.approve(BRIDGE_CONTRACT_ADDRESS, whbarsAmount).send({ from: accounts[ 0 ], gasPrice: web3.utils.toWei(state.gasPrice, "gwei") });
+            await state.bridge.methods.burn(whbarsAmount, web3.utils.fromAscii(state.account?.toString())).send({ from: accounts[ 0 ], gasPrice: web3.utils.toWei(state.gasPrice, "gwei") });
 
-                if (state.amount == null) {
-                    throw new Error(context.root
-                        .$t("common.error.nullTransferAmount")
-                        .toString());
-                }
-
-                const recipient: AccountId | null = state.account;
-                const { CryptoTransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-                const sendAmount = new Hbar(state.amount);
-
-                const tx = new CryptoTransferTransaction()
-                    .addSender(
-                        getters.currentUser().session.account,
-                        sendAmount
-                    )
-                    .addRecipient(recipient, sendAmount)
-                    .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
-
-                if (state.memo == null || state.memo === "") {
-                    state.memo = " "; // Hack for Nano X paging
-                }
-
-                tx.setTransactionMemo(state.memo);
-
-                const transactionIntermediate = await tx.execute(client);
-                const receipt = await transactionIntermediate.getReceipt(client);
-
-                if (receipt != null) {
-                    const { shard, realm, account } = transactionIntermediate.accountId;
-                    const { seconds, nanos } = transactionIntermediate.validStart;
-
-                    // build the transaction id from the data.
-                    state.transactionId = `${shard}.${realm}.${account}@${seconds}.${nanos}`;
-                }
-
-                // Refresh Balance
-                await actions.refreshBalancesAndRate();
-
-                // eslint-disable-next-line require-atomic-updates
-                state.modalSummaryState.isOpen = false;
-                state.modalSuccessState.isOpen = true;
-            } catch (error) {
-                handleError(error);
-            } finally {
-                // eslint-disable-next-line require-atomic-updates
-                state.modalSummaryState.isBusy = false;
-                state.modalSummaryState.isOpen = false;
-                state.isBusy = false;
-            }
+            await actions.refreshBalancesAndRate();
+            state.modalSummaryState.isOpen = false;
+            state.modalSuccessState.isOpen = true;
         }
 
         function handleModalSuccessDismiss(): void {
@@ -379,6 +392,7 @@ export default defineComponent({
             (idInput.value! as IdInputElement).clear();
             state.memo = "";
             state.accountString = "";
+            state.gasPrice = "0";
         }
 
         return {
@@ -398,7 +412,8 @@ export default defineComponent({
             truncate,
             handleInput,
             handleValid,
-            handleAccount
+            handleAccount,
+            handleGasPriceInput
         };
     }
 });

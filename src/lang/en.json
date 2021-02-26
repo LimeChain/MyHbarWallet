@@ -266,6 +266,8 @@
     "interfaceWrapHbar.wrapHbar": "Wrap Hbar | Wrap {count} Hbar | Wrap {count} Hbars",
     "interfaceUnwrapWHbar.title": "Unwrap WHbar to Hbar",
     "interfaceUnwrapWHbar.unwrapWHbar": "Unwrap WHbar | Unwrap {count} WHbar | Unwrap {count} WHbars",
+    "interfaceUnwrapWHbar.userDeniedAccess": "User denied account access!",
+    "interfaceUnwrapWHbar.noWeb3Provider": "No Web3 Provider! Please install Metamask!",
     "transferList.transfers": "Transfers",
     "interfaceSendTransfer.sendHbar": "Send Hbar | Send {count} Hbar | Send {count} Hbars",
     "interfaceSendTransfer.feeSummary.dismiss": "Cancel",

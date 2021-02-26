@@ -1,13 +1,11 @@
 import { externalRequest } from "./request";
 
-const ETHERSCAN_API_KEY = "Y2UTKP86K5EYBGZ64YIH6N3IBGNQAJ8M21";
-
-export const etherscanGasPriceTrackerEndpoint =
-    `https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${ETHERSCAN_API_KEY}`;
+declare const ETHERSCAN_API_KEY: string;
+declare const ETHERSCAN_GAS_PRICE_ENDPOINT: string;
 
 export async function gasPriceOracle(): Promise<any> {
     try {
-        return await externalRequest(`${etherscanGasPriceTrackerEndpoint}`);
+        return await externalRequest(`${ETHERSCAN_GAS_PRICE_ENDPOINT}${ETHERSCAN_API_KEY}`);
     } catch (error) {
         // eslint-disable-next-line no-console
         console.warn(error);

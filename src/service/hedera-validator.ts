@@ -1,11 +1,10 @@
 import { externalRequest } from "./request";
 
-export const metadataEndpoint =
-    "http://localhost:6200/api/v1/metadata?gasPriceGwei=";
+declare const VALIDATOR_METADATA_ENDPOINT: string;
 
 export async function txMetadata(gasPriceGwei: string): Promise<any> {
     try {
-        return await externalRequest(`${metadataEndpoint}${gasPriceGwei}`);
+        return await externalRequest(`${VALIDATOR_METADATA_ENDPOINT}${gasPriceGwei}`);
     } catch (error) {
         // eslint-disable-next-line no-console
         console.warn(error);

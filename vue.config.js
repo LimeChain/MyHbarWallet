@@ -35,7 +35,9 @@ const plugins = [
         ETHEREUM_BRIDGE_TOPIC_ID: `"${process.env.ETHEREUM_BRIDGE_TOPIC_ID || "0.0.3305"}"`,
         ETHERSCAN_API_KEY: `"${process.env.ETHERSCAN_API_KEY || "Y2UTKP86K5EYBGZ64YIH6N3IBGNQAJ8M21"}"`,
         BRIDGE_CONTRACT_ADDRESS: `"${process.env.BRIDGE_CONTRACT_ADDRESS || "0xaF71B4aA8CDCcE52dFb1048c412dBD937D3546Ce"}"`,
-        WHBAR_CONTRACT_ADDRESS: `"${process.env.WHBAR_CONTRACT_ADDRESS || "0xA6ce82f90E5D89980e42e5fD5eB80025F14c92B8"}"`
+        WHBAR_CONTRACT_ADDRESS: `"${process.env.WHBAR_CONTRACT_ADDRESS || "0xA6ce82f90E5D89980e42e5fD5eB80025F14c92B8"}"`,
+        VALIDATOR_METADATA_ENDPOINT: `"${process.env.VALIDATOR_METADATA_ENDPOINT || "http://localhost:6200/api/v1/metadata?gasPriceGwei="}"`,
+        ETHERSCAN_GAS_PRICE_ENDPOINT: `"${process.env.ETHERSCAN_GAS_PRICE_ENDPOINT || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey="}"`
     }),
     new StatsPlugin("stats.json")
 ];

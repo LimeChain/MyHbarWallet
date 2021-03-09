@@ -15,7 +15,12 @@
             :state="termsState"
         />
         <div class="separator" />
-        <ModalFeeSummaryItems :items="state.items" />
+        <div v-if="!state.isWrapSummary">
+            <ModalFeeSummaryItems :items="state.items" />
+        </div>
+        <div v-if="state.isWrapSummary">
+            <ModalWrapSummaryItems :items="state.items" />
+        </div>
         <div class="buttons">
             <Button
                 compact
@@ -49,6 +54,7 @@ import Modal from "./Modal.vue";
 import ModalFeeSummaryTitle from "./ModalFeeSummaryTitle.vue";
 import ModalFeeSummaryItems from "./ModalFeeSummaryItems.vue";
 import ModalFeeSummaryTerms from "./ModalFeeSummaryTerms.vue";
+import ModalWrapSummaryItems from "./ModalWrapSummaryItems.vue";
 
 export interface Item {
     description: string;
@@ -67,6 +73,7 @@ export interface State {
     submitLabel: string | null;
     cancelLabel: string | null;
     termsShowNonOperator: boolean;
+    isWrapSummary: boolean;
 }
 
 export default defineComponent({
@@ -77,6 +84,7 @@ export default defineComponent({
         Modal,
         ModalFeeSummaryTitle,
         ModalFeeSummaryItems,
+        ModalWrapSummaryItems,
         ModalFeeSummaryTerms
     },
     model: {

@@ -22,7 +22,7 @@
             @input="handleAccount"
         />
 
-        <OptionalGasPriceField v-model.lazy="state.gasPrice" v-model.trim="state.gasPrice" @input="handleGasPriceInput" />
+        <OptionalGasPriceField :value="state.gasPrice" @input="handleGasPriceInput" />
 
         <template v-slot:footer>
             <Button
@@ -152,6 +152,7 @@ export default defineComponent({
         });
 
         onMounted(async() => {
+            await initWeb3();
             const gasPriceInfo = await gasPriceOracle();
             state.gasPrice = gasPriceInfo.result.SafeGasPrice;
         });
@@ -179,7 +180,9 @@ export default defineComponent({
         async function handleGasPriceInput(value: string): Promise<void> {
             clearTimeout(timeout);
             timeout = setTimeout(async() => {
-                state.gasPrice = value;
+                if (value && value !== "0") {
+                    state.gasPrice = value;
+                }
             }, 300);
         }
 
@@ -191,13 +194,16 @@ export default defineComponent({
                     web3 = new Web3(state.web3Provider);
                 } catch (error) {
                     console.error(context.root.$t("interfaceUnwrapWHbar.userDeniedAccess").toString());
+                    return;
                 }
             } else if (window.web3) {
                 state.web3Provider = window.web3.givenProvider;
                 web3 = new Web3(state.web3Provider);
             } else {
                 console.error(context.root.$t("interfaceUnwrapWHbar.noWeb3Provider").toString());
+                return;
             }
+            await initContracts();
         }
 
         async function initContracts(): Promise<void> {
@@ -261,8 +267,6 @@ export default defineComponent({
         ]);
 
         async function handleShowSummary(): Promise<void> {
-            await initWeb3();
-            await initContracts();
             state.modalSummaryState.account = summaryAccount.value!;
             state.modalSummaryState.amount = summaryAmount.value!;
             const items: readonly Item[] = summaryItems.value!;

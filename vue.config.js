@@ -31,13 +31,14 @@ const plugins = [
         IS_ELECTRON: is_electron,
         HEDERA_NETWORK: `"${process.env.HEDERA_NETWORK || "testnet"}"`,
         MOONPAY_API_KEY: `"${process.env.MOONPAY_API_KEY || "pk_test_ypQ0mhShRarhXwAbGvdLfxAL89AtfQ"}"`,
-        ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT: `"${process.env.ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT || "0.0.3306"}"`,
-        ETHEREUM_BRIDGE_TOPIC_ID: `"${process.env.ETHEREUM_BRIDGE_TOPIC_ID || "0.0.3305"}"`,
+        ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT: `"${process.env.ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT || "0.0.411869"}"`,
+        ETHEREUM_BRIDGE_TOPIC_ID: `"${process.env.ETHEREUM_BRIDGE_TOPIC_ID || "0.0.411868"}"`,
         ETHERSCAN_API_KEY: `"${process.env.ETHERSCAN_API_KEY || "Y2UTKP86K5EYBGZ64YIH6N3IBGNQAJ8M21"}"`,
-        BRIDGE_CONTRACT_ADDRESS: `"${process.env.BRIDGE_CONTRACT_ADDRESS || "0xaF71B4aA8CDCcE52dFb1048c412dBD937D3546Ce"}"`,
-        WHBAR_CONTRACT_ADDRESS: `"${process.env.WHBAR_CONTRACT_ADDRESS || "0xA6ce82f90E5D89980e42e5fD5eB80025F14c92B8"}"`,
-        VALIDATOR_METADATA_ENDPOINT: `"${process.env.VALIDATOR_METADATA_ENDPOINT || "http://localhost:6200/api/v1/metadata?gasPriceGwei="}"`,
-        ETHERSCAN_GAS_PRICE_ENDPOINT: `"${process.env.ETHERSCAN_GAS_PRICE_ENDPOINT || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey="}"`
+        BRIDGE_CONTRACT_ADDRESS: `"${process.env.BRIDGE_CONTRACT_ADDRESS || "0x51D1C4E0Da85aa7Df80a6F0CA4033e92f5B1c9f6"}"`,
+        WHBAR_CONTRACT_ADDRESS: `"${process.env.WHBAR_CONTRACT_ADDRESS || "0x60d76a531202dB9497317F77873A57A588Ff2F05"}"`,
+        VALIDATOR_METADATA_ENDPOINT: `"${process.env.VALIDATOR_METADATA_ENDPOINT || "http://localhost:5200/api/v1/metadata?gasPriceGwei="}"`,
+        ETHERSCAN_GAS_PRICE_ENDPOINT: `"${process.env.ETHERSCAN_GAS_PRICE_ENDPOINT || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey="}"`,
+        ETHERSCAN_TX_URL: `"${process.env.ETHERSCAN_TX_URL || "https://ropsten.etherscan.io/tx/"}"`
     }),
     new StatsPlugin("stats.json")
 ];
@@ -78,7 +79,7 @@ const electronOptions = {
             customFileProtocol: "mhw://./",
             chainWebpackRendererProcess(config) {
                 config.plugin("define").tap((args) => {
-                    args[ 0 ].IS_ELECTRON = "true";
+                    args[0].IS_ELECTRON = "true";
                     return args;
                 });
             },
@@ -87,10 +88,10 @@ const electronOptions = {
                 appId: "com.myhbarwallet.app",
                 productName: "MyHbarWallet",
                 copyright: "Copyright © 2020 MyHbarWallet",
-                files: [ "**", "dist/electron/icon.*" ],
+                files: ["**", "dist/electron/icon.*"],
                 npmRebuild: true,
                 win: {
-                    target: [ "nsis" ],
+                    target: ["nsis"],
                     icon: "./dist/electron/icons/icon.ico"
                 },
                 mac: {
@@ -99,7 +100,7 @@ const electronOptions = {
                     icon: "./dist/electron/icons/icon.icns"
                 },
                 linux: {
-                    target: [ "pacman", "deb", "rpm" ],
+                    target: ["pacman", "deb", "rpm"],
                     executableName: "MyHbarWallet",
                     category: "Utility",
                     desktop: {
@@ -113,10 +114,10 @@ const electronOptions = {
 };
 
 // write to disk preferred for electron
-const electronDevServer = { devServer: { writeToDisk: true }};
+const electronDevServer = { devServer: { writeToDisk: true } };
 
 // source map in dev, test
-const css = { css: { sourceMap: process.env.NODE_ENV !== "production" }};
+const css = { css: { sourceMap: process.env.NODE_ENV !== "production" } };
 
 // Keep entrypoint small and asynchronously load chunks at a reasonable pace
 const performance = {
@@ -125,7 +126,7 @@ const performance = {
         maxEntrypointSize: 8000000,
         maxAssetSize: 8000000
     },
-    optimization: { splitChunks: { chunks: "all", maxInitialRequests: 4, maxAsyncRequests: 7 }}
+    optimization: { splitChunks: { chunks: "all", maxInitialRequests: 4, maxAsyncRequests: 7 } }
 };
 
 // explicitly use node version of the hashgraph SDK in electron
@@ -135,7 +136,7 @@ const electronConfig = {
         target: "electron-renderer",
         ...performance,
         plugins,
-        resolve: { alias: { "@hashgraph/sdk": path.resolve(__dirname, "node_modules/@hashgraph/sdk/lib/index-node.js") }}
+        resolve: { alias: { "@hashgraph/sdk": path.resolve(__dirname, "node_modules/@hashgraph/sdk/lib/index-node.js") } }
     },
     ...electronOptions,
     ...electronDevServer
@@ -167,7 +168,7 @@ const chainConfig = {
     chainWebpack(config) {
         config.plugin("html").tap((args) => [
             {
-                ...args[ 0 ],
+                ...args[0],
                 template: path.resolve(__dirname, "src/index.html")
             }
         ]);
@@ -178,10 +179,10 @@ const chainConfig = {
         if (process.env.NODE_ENV === "production") {
             config.plugin("optimize-css").tap((args) => [
                 {
-                    ...args[ 0 ],
+                    ...args[0],
                     preset: [
                         "advanced",
-                        { discardComments: { removeAll: true }}
+                        { discardComments: { removeAll: true } }
                     ]
                 }
             ]);

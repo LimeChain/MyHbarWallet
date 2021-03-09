@@ -21,7 +21,7 @@
             @input="handleEthAddressInput"
         />
 
-        <OptionalGasPriceField v-model.lazy="state.gasPrice" v-model.trim="state.gasPrice" @input="handleGasPriceInput" />
+        <OptionalGasPriceField :value="state.gasPrice" @input="handleGasPriceInput" />
 
         <template v-slot:footer>
             <Button
@@ -44,6 +44,17 @@
                     <strong>{{ amount }}</strong>
                     <strong>{{ state.accountString }}</strong>
                 </i18n>
+                <div class="empty">
+                    <Notice :symbol="mdiHelpCircleOutline" v-if="!state.showEthMessage">
+                        {{ $t('interfaceWrapHbar.wrapWaitEthTx') }}
+                    </Notice>
+                </div>
+                <div v-if="state.showEthMessage">
+                    <a
+                    :href="state.ethereumTransaction"
+                    target="_blank"
+                    >Ethereum Transaction</a>
+                </div>
             </div>
         </ModalSuccess>
 
@@ -59,6 +70,7 @@ import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext,
 import { BigNumber } from "bignumber.js";
 import { AccountId } from "@hashgraph/sdk";
 import Web3 from "web3";
+import { mdiHelpCircleOutline } from "@mdi/js";
 
 import TextInput from "../components/TextInput.vue";
 import InterfaceForm from "../components/InterfaceForm.vue";
@@ -69,11 +81,21 @@ import ModalFeeSummary, { Item, State as ModalSummaryState } from "../components
 import { formatHbar, validateHbar } from "../../service/format";
 import OptionalGasPriceField from "../components/OptionalGasPriceField.vue";
 import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
+import Notice from "../components/Notice.vue";
 import { LoginMethod } from "../../domain/wallets/wallet";
 import { actions, getters } from "../store";
 import { txMetadata } from "../../service/hedera-validator";
 import { gasPriceOracle } from "../../service/etherscan";
+import Bridge from "../../contracts/bridge.json";
+import Whbar from "../../contracts/whbar.json";
 let timeout: any = null;
+let web3: any;
+declare const window: any;
+
+// Defined in vue.config.js.
+declare const BRIDGE_CONTRACT_ADDRESS: string;
+declare const WHBAR_CONTRACT_ADDRESS: string;
+declare const ETHERSCAN_TX_URL: string;
 
 interface State {
     amount: string | null;
@@ -91,6 +113,12 @@ interface State {
     ethAddressErrorMessage: string | null;
     gasPrice: string;
     txFee: string;
+    serviceFee: string;
+    web3Provider: any;
+    bridge: any;
+    whbar: any;
+    ethereumTransaction: any;
+    showEthMessage: boolean;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -117,7 +145,8 @@ export default defineComponent({
         ModalSuccess,
         ModalFeeSummary,
         OptionalGasPriceField,
-        IDInput
+        IDInput,
+        Notice
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
@@ -141,7 +170,8 @@ export default defineComponent({
                 txType: "transfer",
                 submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true
+                termsShowNonOperator: true,
+                isWrapSummary: true
             },
             modalSuccessState: {
                 isOpen: false,
@@ -150,10 +180,17 @@ export default defineComponent({
             ethAddress: "",
             ethAddressErrorMessage: "",
             gasPrice: "",
-            txFee: ""
+            txFee: "",
+            serviceFee: "",
+            web3Provider: null,
+            bridge: null,
+            whbar: null,
+            ethereumTransaction: null,
+            showEthMessage: false
         });
 
         onMounted(async() => {
+            await initWeb3();
             const gasPriceInfo = await gasPriceOracle();
             state.gasPrice = gasPriceInfo.result.SafeGasPrice;
             const metadata = await txMetadata(state.gasPrice);
@@ -176,9 +213,11 @@ export default defineComponent({
         async function handleGasPriceInput(value: string): Promise<void> {
             clearTimeout(timeout);
             timeout = setTimeout(async() => {
-                state.gasPrice = value;
-                const metadata = await txMetadata(state.gasPrice);
-                state.txFee = new BigNumber(metadata.txFee).toString();
+                if (value && value !== "0") {
+                    state.gasPrice = value;
+                    const metadata = await txMetadata(state.gasPrice);
+                    state.txFee = new BigNumber(metadata.txFee).toString();
+                }
             }, 300);
         }
 
@@ -191,6 +230,33 @@ export default defineComponent({
             }
         );
 
+        async function initWeb3(): Promise<void> {
+            if (window.ethereum) {
+                state.web3Provider = window.ethereum;
+                try {
+                    await window.ethereum.enable();
+                    web3 = new Web3(state.web3Provider);
+                } catch (error) {
+                    console.error(context.root.$t("interfaceUnwrapWHbar.userDeniedAccess").toString());
+                    return;
+                }
+            } else if (window.web3) {
+                state.web3Provider = window.web3.givenProvider;
+                web3 = new Web3(state.web3Provider);
+            } else {
+                console.error(context.root.$t("interfaceUnwrapWHbar.noWeb3Provider").toString());
+                return;
+            }
+            await initContracts();
+        }
+
+        async function initContracts(): Promise<void> {
+            state.bridge = await new web3.eth.Contract(Bridge.abi, BRIDGE_CONTRACT_ADDRESS);
+            state.whbar = await new web3.eth.Contract(Whbar.abi, WHBAR_CONTRACT_ADDRESS);
+            state.bridge.setProvider(state.web3Provider);
+            state.whbar.setProvider(state.web3Provider);
+        }
+
         function handleValid(valid: boolean): void {
             state.idValid = valid;
         }
@@ -199,6 +265,24 @@ export default defineComponent({
             if (state.amount) {
                 return (
                     new BigNumber(state.amount).isGreaterThan(new BigNumber(0)) && validateHbar(state.amount)
+                );
+            }
+            return false;
+        });
+
+        const isServiceFeeValid = computed(() => {
+            if (state.serviceFee) {
+                return (
+                    new BigNumber(state.serviceFee).isGreaterThan(new BigNumber(0)) && validateHbar(state.serviceFee)
+                );
+            }
+            return false;
+        });
+
+        const isTxFeeValid = computed(() => {
+            if (state.txFee) {
+                return (
+                    new BigNumber(state.txFee).isGreaterThan(new BigNumber(0)) && validateHbar(state.txFee)
                 );
             }
             return false;
@@ -252,12 +336,41 @@ export default defineComponent({
                                 new BigNumber(0)
             },
             {
-                description: context.root.$t("common.estimatedFee").toString(),
+                description: context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString(),
                 value: estimatedFeeHbar
+            },
+            {
+                description: context.root.$t("interfaceWrapHbar.ethereumNetworkFee").toString(),
+                value: isTxFeeValid && state.txFee ?
+                    new BigNumber(convert(state.txFee, Unit.Tinybar, Unit.Hbar, false)) : new BigNumber(0)
+            },
+            {
+                description: context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString(),
+                value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0)
             }
         ]);
 
         async function handleShowSummary(): Promise<void> {
+            const amountBn = new BigNumber(summaryAmount.value);
+            const txFee = new BigNumber(convert(
+                state.txFee.toString(),
+                Unit.Tinybar,
+                Unit.Hbar,
+                false
+            ));
+            if (amountBn.lt(txFee)) {
+                state.amountErrorMessage = `Amount must be at least ${txFee} hbars`;
+                return;
+            }
+            const contractServiceFee = await state.bridge.methods.serviceFee().call();
+            const serviceFee = amountBn.minus(txFee).multipliedBy(contractServiceFee).dividedBy(100000);
+
+            if (amountBn.minus(txFee).minus(serviceFee).lte(0)) {
+                state.amountErrorMessage = `Amount must be at least ${txFee.plus(serviceFee)} hbars (includes bridge service fee)`;
+                return;
+            }
+
+            state.serviceFee = serviceFee.toString();
             console.log(constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice));
             state.modalSummaryState.account = summaryAccount.value!;
             state.modalSummaryState.amount = summaryAmount.value!;
@@ -411,7 +524,19 @@ export default defineComponent({
                     const { seconds, nanos } = transactionIntermediate.validStart;
 
                     // build the transaction id from the data.
-                    state.transactionId = `${shard}.${realm}.${account}@${seconds}.${nanos}`;
+                    state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
+
+                    const hexTransactionId = web3.utils.sha3(state.transactionId);
+
+                    state.bridge.once("Mint", { topics: [ null, null, hexTransactionId ]}, (error: any, result: any) => {
+                        if (error) {
+                            console.error(error);
+                            return;
+                        }
+
+                        state.ethereumTransaction = `${ETHERSCAN_TX_URL}${result.transactionHash}`;
+                        state.showEthMessage = true;
+                    });
                 }
 
                 // Refresh Balance
@@ -430,14 +555,19 @@ export default defineComponent({
             }
         }
 
-        function handleModalSuccessDismiss(): void {
+        async function handleModalSuccessDismiss(): Promise<void> {
             state.modalSuccessState.isOpen = false;
             state.isBusy = false;
             state.amount = "";
             state.memo = "";
             state.ethAddress = "";
-            state.gasPrice = "0";
-            state.txFee = "";
+            const gasPriceInfo = await gasPriceOracle();
+            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
+            const metadata = await txMetadata(state.gasPrice);
+            state.txFee = new BigNumber(metadata.txFee).toString();
+            state.serviceFee = "";
+            state.ethereumTransaction = null;
+            state.showEthMessage = false;
         }
 
         return {
@@ -460,7 +590,8 @@ export default defineComponent({
             handleAccount,
             isEthAddressValid,
             handleEthAddressInput,
-            handleGasPriceInput
+            handleGasPriceInput,
+            mdiHelpCircleOutline
         };
     }
 });

@@ -57,7 +57,7 @@ interface Amount {
 
 interface CalculatedAmounts {
     total: Amount;
-    mint: Amount;
+    wrap: Amount;
 }
 
 export default defineComponent({
@@ -67,7 +67,7 @@ export default defineComponent({
     setup(props: { items: Item[] }, context: SetupContext) {
         const calculateAmounts: Ref<CalculatedAmounts> = computed(() => {
             let total = new BigNumber(0);
-            let mintAmount = new BigNumber(0);
+            let wrapAmount = new BigNumber(0);
 
             if (props.items != null) {
                 for (const item of props.items) {
@@ -77,7 +77,7 @@ export default defineComponent({
                         }
                         if (item.value instanceof BigNumber) {
                             total = total.plus(item.value);
-                            mintAmount = mintAmount.plus(item.value);
+                            wrapAmount = wrapAmount.plus(item.value);
                         }
                     } else if (item.description === context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString()) {
                         if (item.value instanceof Hbar) {
@@ -91,13 +91,13 @@ export default defineComponent({
                             item.value = item.value.as(HbarUnit.Hbar);
                         }
                         if (item.value instanceof BigNumber) {
-                            mintAmount = mintAmount.minus(item.value);
+                            wrapAmount = wrapAmount.minus(item.value);
                         }
                     }
                 }
             }
             const totalParts = formatSplit(total.toString());
-            const mintParts = formatSplit(mintAmount.toString());
+            const wrapParts = formatSplit(wrapAmount.toString());
 
             const totalAmount: Amount = totalParts ? {
                 int: totalParts[ "int" ],
@@ -106,9 +106,9 @@ export default defineComponent({
                 int: "0",
                 fraction: "0"
             };
-            const mintAmounts: Amount = mintParts ? {
-                int: mintParts[ "int" ],
-                fraction: mintParts.fraction
+            const wrapAmounts: Amount = wrapParts ? {
+                int: wrapParts[ "int" ],
+                fraction: wrapParts.fraction
             } : {
                 int: "0",
                 fraction: "0"
@@ -116,7 +116,7 @@ export default defineComponent({
 
             return {
                 total: totalAmount,
-                mint: mintAmounts
+                wrap: wrapAmounts
             };
         });
 
@@ -160,9 +160,9 @@ export default defineComponent({
             // Push the the mint onto the item array
             items.push({
                 key: nextItemKey(),
-                description: "Total Mint Amount",
-                int: computedTotal.value.mint[ "int" ],
-                fraction: computedTotal.value.mint.fraction,
+                description: "Total Wrapped ℏ",
+                int: computedTotal.value.wrap[ "int" ],
+                fraction: computedTotal.value.wrap.fraction,
                 value: "",
                 currency: "WHBAR"
             });

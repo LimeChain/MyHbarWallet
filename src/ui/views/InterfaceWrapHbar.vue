@@ -96,6 +96,7 @@ declare const window: any;
 declare const BRIDGE_CONTRACT_ADDRESS: string;
 declare const WHBAR_CONTRACT_ADDRESS: string;
 declare const ETHERSCAN_TX_URL: string;
+declare const INFURA_API_URL: string;
 
 interface State {
     amount: string | null;
@@ -231,22 +232,8 @@ export default defineComponent({
         );
 
         async function initWeb3(): Promise<void> {
-            if (window.ethereum) {
-                state.web3Provider = window.ethereum;
-                try {
-                    await window.ethereum.enable();
-                    web3 = new Web3(state.web3Provider);
-                } catch (error) {
-                    console.error(context.root.$t("interfaceUnwrapWHbar.userDeniedAccess").toString());
-                    return;
-                }
-            } else if (window.web3) {
-                state.web3Provider = window.web3.givenProvider;
-                web3 = new Web3(state.web3Provider);
-            } else {
-                console.error(context.root.$t("interfaceUnwrapWHbar.noWeb3Provider").toString());
-                return;
-            }
+            state.web3Provider = new Web3.providers.WebsocketProvider(INFURA_API_URL);
+            web3 = new Web3(state.web3Provider);
             await initContracts();
         }
 

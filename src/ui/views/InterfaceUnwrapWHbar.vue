@@ -1,6 +1,6 @@
 <template>
     <InterfaceForm :title="$t('interfaceUnwrapWHbar.title')">
-        <div v-if="state.web3Provider">
+        <div v-if="state.web3Provider && state.web3Provider.selectedAddress">
             Address {{ state.web3Provider.selectedAddress }}, {{ state.whbarBalance }} WHBAR
         </div>
         <TextInput
@@ -105,6 +105,7 @@ interface State {
     whbarBalance: string;
     ethBalance: string;
     estimatedApproveTx: string;
+    gasLimitApproveTx: string;
     estimatedUnwrapTx: string;
     ethereumTransaction: string;
 }
@@ -163,6 +164,7 @@ export default defineComponent({
             whbarBalance: "",
             ethBalance: "",
             estimatedApproveTx: "",
+            gasLimitApproveTx: "",
             estimatedUnwrapTx: "",
             ethereumTransaction: ""
         });
@@ -207,7 +209,6 @@ export default defineComponent({
                 state.web3Provider = window.ethereum;
                 try {
                     const result = await window.ethereum.request({ method: "eth_requestAccounts" });
-                    console.log(result);
                     web3 = new Web3(state.web3Provider);
                 } catch (error) {
                     console.error(context.root.$t("interfaceUnwrapWHbar.userDeniedAccess").toString());
@@ -348,10 +349,11 @@ export default defineComponent({
             const gasPriceWei = web3.utils.toWei(state.gasPrice, "gwei");
             const options = { from: state.web3Provider.selectedAddress, gasPrice: gasPriceWei };
 
-            const estimatedApproveTxWei = await state.whbar.methods.approve(BRIDGE_CONTRACT_ADDRESS, tinyBarAmount).estimateGas(options);
+            const gasLimitApproveTxWei = await state.whbar.methods.approve(BRIDGE_CONTRACT_ADDRESS, tinyBarAmount).estimateGas(options);
             const bnGasPrice = new BigNumber(String(gasPriceWei));
-            const bnApproveWei = new BigNumber(String(estimatedApproveTxWei)).multipliedBy(bnGasPrice);
+            const bnApproveWei = new BigNumber(String(gasLimitApproveTxWei)).multipliedBy(bnGasPrice);
 
+            state.gasLimitApproveTx = gasLimitApproveTxWei;
             state.estimatedApproveTx = web3.utils.fromWei(bnApproveWei.toString(), "ether");
             // state.bridge.methods.burn(tinyBarAmount, web3.utils.fromAscii(state.account?.toString())).estimateGas(options, handleEstimation);
 
@@ -431,21 +433,23 @@ export default defineComponent({
             state.isBusy = true;
             state.modalSummaryState.isBusy = true;
             const whbarsAmount = parseInt(state.amount) * 10 ** 8;
-            const options = { from: state.web3Provider.selectedAddress, gasPrice: web3.utils.toWei(state.gasPrice, "gwei") };
 
-            await state.whbar.methods.approve(BRIDGE_CONTRACT_ADDRESS, whbarsAmount).send(options); // on transaction hash execute the second, otherwise drop everything
-            state.bridge.methods.burn(whbarsAmount, web3.utils.fromAscii(state.account?.toString()))
-                .send(options)
-                .on("transactionHash", async(hash: string) => {
-                    state.ethereumTransaction = `${ETHERSCAN_TX_URL}${hash}`;
+            const fromAddress = state.web3Provider.selectedAddress;
+            const gasPrice = web3.utils.toWei(state.gasPrice, "gwei");
 
-                    await actions.refreshBalancesAndRate();
-                    state.modalSummaryState.isOpen = false;
-                    state.modalSuccessState.isOpen = true;
-                })
-                .on("error", () => {
-                    handleModalSuccessDismiss();
-                });
+            const approveOptions = { from: fromAddress, gasPrice, gas: state.gasLimitApproveTx };
+            const burnOptions = { from: fromAddress, gasPrice };
+
+            try {
+                await state.whbar.methods
+                    .approve(BRIDGE_CONTRACT_ADDRESS, whbarsAmount)
+                    .send(approveOptions);
+
+                await submitBurn(whbarsAmount, burnOptions);
+            } catch (error) {
+                handleModalSummaryDimiss();
+                throw new Error(error);
+            }
         }
 
         async function handleModalSuccessDismiss(): Promise<void> {
@@ -461,6 +465,49 @@ export default defineComponent({
             state.ethereumTransaction = "";
             const gasPriceInfo = await gasPriceOracle();
             state.gasPrice = gasPriceInfo.result.SafeGasPrice;
+            await updateBalance();
+        }
+
+        function submitBurn(whbarsAmount: any, options: any): void {
+            state.bridge.methods.burn(whbarsAmount, web3.utils.fromAscii(state.account?.toString()))
+                .send(options)
+                .on("transactionHash", visualizeSuccessModal)
+                .on("error", handleModalSummaryDimiss);
+        }
+
+        async function visualizeSuccessModal(hash: string): Promise<void> {
+            state.ethereumTransaction = `${ETHERSCAN_TX_URL}${hash}`;
+
+            await actions.refreshBalancesAndRate();
+            state.bridge.once("Burn", { topics: [ null, web3.utils.padLeft(state.web3Provider.selectedAddress, 64) ]}, async(error: any, result: any) => {
+                if (error) {
+                    console.error(error);
+                    return;
+                }
+                await updateBalance();
+            });
+            state.modalSummaryState.isOpen = false;
+            state.modalSuccessState.isOpen = true;
+        }
+
+        async function handleModalSummaryDimiss(): Promise<void> {
+            state.modalSummaryState.isOpen = false;
+            await clearState();
+        }
+
+        async function clearState(): Promise<void> {
+            state.isBusy = false;
+            state.amount = "";
+            state.account = null;
+            state.accountString = "";
+            (idInput.value! as IdInputElement).clear();
+            state.memo = "";
+            state.accountString = "";
+            state.serviceFee = "";
+            state.ethereumTransaction = "";
+            const gasPriceInfo = await gasPriceOracle();
+            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
+            await updateBalance();
         }
 
         return {

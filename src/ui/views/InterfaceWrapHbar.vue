@@ -40,9 +40,9 @@
                 <i18n path="modalSuccess.txId">
                     <strong>{{ state.transactionId }}</strong>
                 </i18n>
-                <i18n path="modalSuccess.transferred">
-                    <strong>{{ amount }}</strong>
-                    <strong>{{ state.accountString }}</strong>
+                <i18n path="modalSuccess.wrapHbar">
+                    <strong>{{ state.wrapAmount }}</strong>
+                    <strong>{{ state.ethAddress }}</strong>
                 </i18n>
                 <div class="empty">
                     <Notice :symbol="mdiHelpCircleOutline" v-if="!state.showEthMessage">
@@ -117,6 +117,7 @@ interface State {
     bridge: any;
     ethereumTransaction: any;
     showEthMessage: boolean;
+    wrapAmount: string;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -165,7 +166,7 @@ export default defineComponent({
                 account: "",
                 amount: "",
                 items: [],
-                txType: "transfer",
+                txType: "wrapHbar",
                 submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
                 termsShowNonOperator: true,
@@ -183,7 +184,8 @@ export default defineComponent({
             web3Provider: null,
             bridge: null,
             ethereumTransaction: null,
-            showEthMessage: false
+            showEthMessage: false,
+            wrapAmount: ""
         });
 
         onMounted(async() => {
@@ -307,7 +309,7 @@ export default defineComponent({
 
         // Modal Fee Summary State
         const summaryAmount = computed(() => amount.value);
-        const summaryAccount = computed(() => state.accountString);
+        const summaryAccount = computed(formatEthAddress);
         const summaryItems = computed((): Item[] => [
             {
                 description: context.root.$t("interfaceSendTransfer.transferAmount").toString(),
@@ -345,12 +347,14 @@ export default defineComponent({
             }
             const contractServiceFee = await state.bridge.methods.serviceFee().call();
             const serviceFee = amountBn.minus(txFee).multipliedBy(contractServiceFee).dividedBy(100000);
+            const wrapAmount = amountBn.minus(txFee).minus(serviceFee);
 
-            if (amountBn.minus(txFee).minus(serviceFee).lte(0)) {
+            if (wrapAmount.lte(0)) {
                 state.amountErrorMessage = `Amount must be at least ${txFee.plus(serviceFee)} hbars (includes bridge service fee)`;
                 return;
             }
 
+            state.wrapAmount = wrapAmount.toString();
             state.serviceFee = serviceFee.toString();
             console.log(constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice));
             state.modalSummaryState.account = summaryAccount.value!;
@@ -358,6 +362,10 @@ export default defineComponent({
             const items: readonly Item[] = summaryItems.value!;
             state.modalSummaryState.items = items;
             state.modalSummaryState.isOpen = true;
+        }
+
+        function formatEthAddress(): string {
+            return `${state.ethAddress?.substr(0, 6)}...${state.ethAddress?.substr(state.ethAddress.length - 6)}`;
         }
 
         // Taken from [UnitConverter]

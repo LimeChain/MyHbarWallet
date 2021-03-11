@@ -39,7 +39,9 @@ const plugins = [
         VALIDATOR_METADATA_ENDPOINT: `"${process.env.VALIDATOR_METADATA_ENDPOINT || "http://localhost:5200/api/v1/metadata?gasPriceGwei="}"`,
         ETHERSCAN_GAS_PRICE_ENDPOINT: `"${process.env.ETHERSCAN_GAS_PRICE_ENDPOINT || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey="}"`,
         ETHERSCAN_TX_URL: `"${process.env.ETHERSCAN_TX_URL || "https://ropsten.etherscan.io/tx/"}"`,
-        INFURA_API_URL: `"${process.env.INFURA_API_URL || "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9"}"`
+        INFURA_API_URL: `"${process.env.INFURA_API_URL || "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9"}"`,
+        ETHEREUM_CHAIN_ID: `"${process.env.ETHEREUM_CHAIN_ID || "0x3"}"`,
+        ETHEREUM_NETWORK: `"${process.env.ETHEREUM_NETWORK || "Ropsten"}"`
     }),
     new StatsPlugin("stats.json")
 ];

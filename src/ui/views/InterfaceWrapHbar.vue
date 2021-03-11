@@ -87,14 +87,12 @@ import { actions, getters } from "../store";
 import { txMetadata } from "../../service/hedera-validator";
 import { gasPriceOracle } from "../../service/etherscan";
 import Bridge from "../../contracts/bridge.json";
-import Whbar from "../../contracts/whbar.json";
 let timeout: any = null;
 let web3: any;
 declare const window: any;
 
 // Defined in vue.config.js.
 declare const BRIDGE_CONTRACT_ADDRESS: string;
-declare const WHBAR_CONTRACT_ADDRESS: string;
 declare const ETHERSCAN_TX_URL: string;
 declare const INFURA_API_URL: string;
 
@@ -117,7 +115,6 @@ interface State {
     serviceFee: string;
     web3Provider: any;
     bridge: any;
-    whbar: any;
     ethereumTransaction: any;
     showEthMessage: boolean;
 }
@@ -185,7 +182,6 @@ export default defineComponent({
             serviceFee: "",
             web3Provider: null,
             bridge: null,
-            whbar: null,
             ethereumTransaction: null,
             showEthMessage: false
         });
@@ -239,9 +235,7 @@ export default defineComponent({
 
         async function initContracts(): Promise<void> {
             state.bridge = await new web3.eth.Contract(Bridge.abi, BRIDGE_CONTRACT_ADDRESS);
-            state.whbar = await new web3.eth.Contract(Whbar.abi, WHBAR_CONTRACT_ADDRESS);
             state.bridge.setProvider(state.web3Provider);
-            state.whbar.setProvider(state.web3Provider);
         }
 
         function handleValid(valid: boolean): void {
@@ -338,7 +332,7 @@ export default defineComponent({
         ]);
 
         async function handleShowSummary(): Promise<void> {
-            const amountBn = new BigNumber(summaryAmount.value);
+            const amountBn = new BigNumber(state.amount ? state.amount : 0);
             const txFee = new BigNumber(convert(
                 state.txFee.toString(),
                 Unit.Tinybar,

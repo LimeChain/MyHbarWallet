@@ -37,6 +37,15 @@
                 <strong>{{ props.account }}</strong>
             </i18n>
         </span>
+        <span
+            v-else-if="props.type === 'unwrapHbar'"
+            class="title"
+        >
+            <i18n path="modalFeeSummaryTitle.unwrapHbar">
+                <strong>{{ props.amount }}</strong>
+                <strong>{{ props.account }}</strong>
+            </i18n>
+        </span>
         <span v-else>
             <i18n path="modalFeeSummaryTitle.transaction">
                 <strong>{{ props.amount }}</strong>

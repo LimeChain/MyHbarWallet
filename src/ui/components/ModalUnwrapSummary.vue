@@ -16,14 +16,14 @@
                 v-if="state.account != null && state.account !== ''"
                 class="term"
             >
-                <span class="description">Receiving Account
-                    <InfoButton :message="$t('modalFeeSummary.whatIsOperator')" />
+                <span class="description"> {{ state.accountDescription }}
                 </span>
                 <span class="value">{{ state.account }}</span>
             </div>
         </div>
         <div class="separator" />
-          <ModalUnwrapSummaryItems :items="state.items" />
+          <ModalUnwrapApproveSummaryItems v-if="state.isApprove" :items="state.items" />
+          <ModalUnwrapBurnSummaryItems v-if="!state.isApprove" :items="state.items" />
         <div class="buttons">
             <Button
                 compact
@@ -57,7 +57,8 @@ import Modal from "./Modal.vue";
 import ModalFeeSummaryTitle from "./ModalFeeSummaryTitle.vue";
 import ModalFeeSummaryItems from "./ModalFeeSummaryItems.vue";
 import ModalFeeSummaryTerms from "./ModalFeeSummaryTerms.vue";
-import ModalUnwrapSummaryItems from "./ModalUnwrapSummaryItems.vue";
+import ModalUnwrapApproveSummaryItems from "./ModalUnwrapApproveSummaryItems.vue";
+import ModalUnwrapBurnSummaryItems from "./ModalUnwrapBurnSummaryItems.vue";
 
 export interface Item {
     description: string;
@@ -69,6 +70,7 @@ export interface State {
     isBusy: boolean;
     isFileSummary: boolean;
     account: string;
+    accountDescription: string;
     amount: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: any[] | readonly any[];
@@ -76,6 +78,7 @@ export interface State {
     submitLabel: string | null;
     cancelLabel: string | null;
     termsShowNonOperator: boolean;
+    isApprove: boolean;
 }
 
 export default defineComponent({
@@ -86,7 +89,8 @@ export default defineComponent({
         Modal,
         ModalFeeSummaryTitle,
         ModalFeeSummaryItems,
-        ModalUnwrapSummaryItems,
+        ModalUnwrapApproveSummaryItems,
+        ModalUnwrapBurnSummaryItems,
         ModalFeeSummaryTerms,
         InfoButton
     },

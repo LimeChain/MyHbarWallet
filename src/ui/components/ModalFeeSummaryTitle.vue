@@ -47,6 +47,15 @@
             </i18n>
         </span>
         <span
+            v-else-if="props.type === 'approveWHbar'"
+            class="title"
+        >
+            <i18n path="modalFeeSummaryTitle.approveWHbar">
+                <strong>{{ props.amount }}</strong>
+                <strong>{{ props.account }}</strong>
+            </i18n>
+        </span>
+        <span
             v-else-if="props.type === 'unwrapHbar'"
             class="title"
         >

@@ -1,7 +1,12 @@
 <template>
     <InterfaceForm :title="$t('interfaceUnwrapWHbar.title')">
-        <div v-if="state.web3Provider && state.web3Provider.selectedAddress">
-            Address {{ state.web3Provider.selectedAddress }}, {{ state.whbarBalance }} WHBAR
+        <div v-if="state.web3Provider && state.web3Provider.selectedAddress" class="eth-content">
+            <p class="address">
+                {{ state.web3Provider.selectedAddress }}
+            </p>
+            <p class="balance" v-if="state.whbarBalance">
+                {{ state.whbarBalance }} WHBAR
+            </p>
         </div>
         <TextInput
             :value="state.amount"
@@ -31,7 +36,7 @@
                 :busy="state.isBusy"
                 :disabled="!state.idValid || !isAmountValid"
                 :label="buttonLabel"
-                @click="handleShowSummary"
+                @click="handleShowApproveSummary"
             />
         </template>
 
@@ -40,7 +45,7 @@
             @dismiss="handleModalSuccessDismiss"
         >
             <div class="success">
-                <i18n path="modalSuccess.transferred">
+                <i18n path="modalSuccess.unwrapHbar">
                     <strong>{{ amount }}</strong>
                     <strong>{{ state.accountString }}</strong>
                 </i18n>
@@ -54,8 +59,13 @@
         </ModalSuccess>
 
         <ModalUnwrapSummary
-            v-model="state.modalSummaryState"
-            @submit="handleSendTransfer"
+            v-model="state.modalApproveSummaryState"
+            @submit="handleApprove"
+        />
+
+        <ModalUnwrapSummary
+            v-model="state.modalBurnSummaryState"
+            @submit="handleBurn"
         />
     </InterfaceForm>
 </template>
@@ -69,7 +79,7 @@ import TextInput from "../components/TextInput.vue";
 import InterfaceForm from "../components/InterfaceForm.vue";
 import Button from "../components/Button.vue";
 import IDInput, { IdInputElement } from "../components/IDInput.vue";
-import { convert, getValueOfUnit, Unit } from "../../service/units";
+import { convert, Unit } from "../../service/units";
 import ModalUnwrapSummary, { Item, State as ModalSummaryState } from "../components/ModalUnwrapSummary.vue";
 import { formatHbar, validateHbar } from "../../service/format";
 import OptionalMemoField from "../components/OptionalMemoField.vue";
@@ -95,7 +105,8 @@ interface State {
     amountErrorMessage: string | null;
     idValid: boolean;
     transactionId: string;
-    modalSummaryState: ModalSummaryState;
+    modalApproveSummaryState: ModalSummaryState;
+    modalBurnSummaryState: ModalSummaryState;
     modalSuccessState: ModalSuccessState;
     gasPrice: string;
     web3Provider: any;
@@ -106,7 +117,8 @@ interface State {
     ethBalance: string;
     estimatedApproveTx: string;
     gasLimitApproveTx: string;
-    estimatedUnwrapTx: string;
+    estimatedBurnTx: string;
+    gasLimitBurnTx: string;
     ethereumTransaction: string;
 }
 
@@ -140,17 +152,33 @@ export default defineComponent({
             amountErrorMessage: "",
             idValid: false,
             transactionId: "",
-            modalSummaryState: {
+            modalApproveSummaryState: {
+                isOpen: false,
+                isBusy: false,
+                isFileSummary: false,
+                accountDescription: "Bridge Address",
+                account: "",
+                amount: "",
+                items: [],
+                txType: "approveWHbar",
+                submitLabel: context.root.$t("interfaceUnwrapWHbar.approve.continue").toString(),
+                cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
+                termsShowNonOperator: false,
+                isApprove: true
+            },
+            modalBurnSummaryState: {
                 isOpen: false,
                 isBusy: false,
                 isFileSummary: false,
                 account: "",
+                accountDescription: "Receiving Account",
                 amount: "",
                 items: [],
                 txType: "unwrapHbar",
-                submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
+                submitLabel: context.root.$t("interfaceUnwrapWHbar.burn.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: false
+                termsShowNonOperator: false,
+                isApprove: false
             },
             modalSuccessState: {
                 isOpen: false,
@@ -165,7 +193,8 @@ export default defineComponent({
             ethBalance: "",
             estimatedApproveTx: "",
             gasLimitApproveTx: "",
-            estimatedUnwrapTx: "",
+            estimatedBurnTx: "",
+            gasLimitBurnTx: "",
             ethereumTransaction: ""
         });
 
@@ -273,6 +302,15 @@ export default defineComponent({
             return false;
         });
 
+        const isEstimatedBurnValid = computed(() => {
+            if (state.serviceFee) {
+                return (
+                    new BigNumber(state.estimatedBurnTx).isGreaterThan(new BigNumber(0))
+                );
+            }
+            return false;
+        });
+
         const amount = computed(() => {
             if (state.amount) {
                 return formatHbar(new BigNumber(state.amount));
@@ -303,9 +341,24 @@ export default defineComponent({
         // Modal Fee Summary State
         const summaryAmount = computed(() => amount.value);
         const summaryAccount = computed(() => state.accountString);
-        const summaryItems = computed((): Item[] => [
+
+        const summaryApproveItems = computed((): Item[] => [
             {
-                description: context.root.$t("interfaceSendTransfer.transferAmount").toString(),
+                description: context.root.$t("interfaceUnwrapWHbar.approveAmount").toString(),
+                value:
+                            isAmountValid && state.amount ?
+                                new BigNumber(state.amount) :
+                                new BigNumber(0)
+            },
+            {
+                description: context.root.$t("interfaceWrapHbar.ethereumNetworkFee").toString(),
+                value: isEstimatedApproveValid && state.estimatedApproveTx ? new BigNumber(state.estimatedApproveTx) : new BigNumber(0)
+            }
+        ]);
+
+        const summaryBurnItems = computed((): Item[] => [
+            {
+                description: context.root.$t("interfaceUnwrapWHbar.unwrapAmount").toString(),
                 value:
                             isAmountValid && state.amount ?
                                 new BigNumber(state.amount) :
@@ -317,11 +370,11 @@ export default defineComponent({
             },
             {
                 description: context.root.$t("interfaceWrapHbar.ethereumNetworkFee").toString(),
-                value: isEstimatedApproveValid && state.estimatedApproveTx ? new BigNumber(state.estimatedApproveTx) : new BigNumber(0)
+                value: isEstimatedBurnValid && state.estimatedBurnTx ? new BigNumber(state.estimatedBurnTx) : new BigNumber(0)
             }
         ]);
 
-        async function handleShowSummary(): Promise<void> {
+        async function handleShowApproveSummary(): Promise<void> {
             await updateBalance();
 
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
@@ -359,11 +412,55 @@ export default defineComponent({
 
             state.serviceFee = serviceFee.toString();
 
-            state.modalSummaryState.account = summaryAccount.value!;
-            state.modalSummaryState.amount = summaryAmount.value!;
-            const items: readonly Item[] = summaryItems.value!;
-            state.modalSummaryState.items = items;
-            state.modalSummaryState.isOpen = true;
+            state.modalApproveSummaryState.account = formatBridgeAddress();
+            state.modalApproveSummaryState.amount = summaryAmount.value!;
+            const items: readonly Item[] = summaryApproveItems.value!;
+            state.modalApproveSummaryState.items = items;
+            state.modalApproveSummaryState.isOpen = true;
+        }
+
+        async function handleShowBurnSummary(): Promise<void> {
+            await updateBalance();
+
+            const amountBn = new BigNumber(state.amount ? state.amount : 0);
+
+            if (amountBn.gt(state.whbarBalance)) {
+                state.amountErrorMessage = "Insufficient balance";
+                return;
+            }
+
+            const contractServiceFee = await state.bridge.methods.serviceFee().call();
+            const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
+
+            if (amountBn.minus(serviceFee).lte(0)) {
+                state.amountErrorMessage = "Invalid amount provided";
+                return;
+            }
+
+            const tinyBarAmount = convert(
+                state.amount,
+                Unit.Hbar,
+                Unit.Tinybar,
+                false
+            );
+
+            const gasPriceWei = web3.utils.toWei(state.gasPrice, "gwei");
+            const options = { from: state.web3Provider.selectedAddress, gasPrice: gasPriceWei };
+
+            const gasLimitBurnTxWei = await state.bridge.methods.burn(tinyBarAmount, web3.utils.fromAscii(state.account?.toString())).estimateGas(options);
+            const bnGasPrice = new BigNumber(String(gasPriceWei));
+            const bnBurnWei = new BigNumber(String(gasLimitBurnTxWei)).multipliedBy(bnGasPrice);
+
+            state.gasLimitApproveTx = gasLimitBurnTxWei;
+            state.estimatedBurnTx = web3.utils.fromWei(bnBurnWei.toString(), "ether");
+
+            state.serviceFee = serviceFee.toString();
+
+            state.modalBurnSummaryState.account = summaryAccount.value!;
+            state.modalBurnSummaryState.amount = summaryAmount.value!;
+            const items: readonly Item[] = summaryBurnItems.value!;
+            state.modalBurnSummaryState.items = items;
+            state.modalBurnSummaryState.isOpen = true;
         }
 
         // Taken from [UnitConverter]
@@ -429,26 +526,46 @@ export default defineComponent({
         }
 
         // eslint-disable-next-line sonarjs/cognitive-complexity
-        async function handleSendTransfer(): Promise<void> {
+        async function handleApprove(): Promise<void> {
             state.isBusy = true;
-            state.modalSummaryState.isBusy = true;
+            state.modalApproveSummaryState.isBusy = true;
             const whbarsAmount = parseInt(state.amount) * 10 ** 8;
 
             const fromAddress = state.web3Provider.selectedAddress;
             const gasPrice = web3.utils.toWei(state.gasPrice, "gwei");
 
             const approveOptions = { from: fromAddress, gasPrice, gas: state.gasLimitApproveTx };
-            const burnOptions = { from: fromAddress, gasPrice };
 
             try {
                 await state.whbar.methods
                     .approve(BRIDGE_CONTRACT_ADDRESS, whbarsAmount)
                     .send(approveOptions);
 
-                await submitBurn(whbarsAmount, burnOptions);
+                handleShowBurnSummary();
             } catch (error) {
                 handleModalSummaryDimiss();
-                throw new Error(error);
+            } finally {
+                state.modalApproveSummaryState.isBusy = false;
+                state.modalApproveSummaryState.isOpen = false;
+                state.isBusy = false;
+            }
+        }
+
+        async function handleBurn(): Promise<void> {
+            state.isBusy = true;
+            state.modalBurnSummaryState.isBusy = true;
+
+            const whbarsAmount = parseInt(state.amount) * 10 ** 8;
+            const fromAddress = state.web3Provider.selectedAddress;
+            const gasPrice = web3.utils.toWei(state.gasPrice, "gwei");
+
+            const burnOptions = { from: fromAddress, gasPrice, gas: state.gasLimitBurnTx };
+            try {
+                submitBurn(whbarsAmount, burnOptions);
+            } catch (error) {
+                handleModalSummaryDimiss();
+            } finally {
+                state.isBusy = false;
             }
         }
 
@@ -486,12 +603,13 @@ export default defineComponent({
                 }
                 await updateBalance();
             });
-            state.modalSummaryState.isOpen = false;
+            state.modalBurnSummaryState.isOpen = false;
             state.modalSuccessState.isOpen = true;
         }
 
         async function handleModalSummaryDimiss(): Promise<void> {
-            state.modalSummaryState.isOpen = false;
+            state.modalBurnSummaryState.isOpen = false;
+            state.modalApproveSummaryState.isOpen = false;
             await clearState();
         }
 
@@ -515,14 +633,15 @@ export default defineComponent({
             state,
             summaryAmount,
             summaryAccount,
-            summaryItems,
+            summaryApproveItems,
             buttonLabel,
             isAmountValid,
             whbarSuffix: "WHBAR",
             tinybarSuffix: Unit.Tinybar,
             idInput,
-            handleShowSummary,
-            handleSendTransfer,
+            handleShowApproveSummary,
+            handleApprove,
+            handleBurn,
             handleModalSuccessDismiss,
             truncate,
             handleInput,
@@ -532,6 +651,10 @@ export default defineComponent({
         };
     }
 });
+
+function formatBridgeAddress(): string {
+    return `${BRIDGE_CONTRACT_ADDRESS.slice(0, 6)}...${BRIDGE_CONTRACT_ADDRESS.slice(-6)}`;
+}
 
 function reloadWindow(): void {
     window.location.reload();

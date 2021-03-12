@@ -60,7 +60,7 @@ interface CalculatedAmounts {
 }
 
 export default defineComponent({
-    name: "ModalUnwrapSummaryItems",
+    name: "ModalUnwrapBurnSummaryItems",
     props: { items: Array as PropType<Item[]> },
     components: { InfoButton },
     setup(props: { items: Item[] }, context: SetupContext) {
@@ -69,7 +69,7 @@ export default defineComponent({
 
             if (props.items != null) {
                 for (const item of props.items) {
-                    if (item.description === context.root.$t("interfaceSendTransfer.transferAmount").toString()) {
+                    if (item.description === context.root.$t("interfaceUnwrapWHbar.unwrapAmount").toString()) {
                         if (item.value instanceof Hbar) {
                             item.value = item.value.as(HbarUnit.Hbar);
                         }

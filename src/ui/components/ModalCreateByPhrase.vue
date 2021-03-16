@@ -183,7 +183,7 @@ export default defineComponent({
 
         async function randomizeMnemonic(): Promise<void> {
             const { Mnemonic } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-            state.result = Mnemonic.generate();
+            state.result = await Mnemonic.generate();
         }
 
         async function handleVerifySuccess(): Promise<void> {
@@ -192,7 +192,7 @@ export default defineComponent({
             state.isBusy = true;
             state.verifyPhraseIsOpen = false;
 
-            const key: import("@hashgraph/sdk").Ed25519PrivateKey = (await state.result.toPrivateKey(state.password)).derive(0);
+            const key: import("@hashgraph/sdk").PrivateKey = await (await state.result.toPrivateKey(state.password)).derive(0);
 
             // eslint-disable-next-line require-atomic-updates
             state.isBusy = false;

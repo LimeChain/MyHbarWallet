@@ -63,7 +63,7 @@ export default defineComponent({
             if (props.items != null) {
                 for (const item of props.items) {
                     if (item.value instanceof Hbar) {
-                        item.value = item.value.as(HbarUnit.Hbar);
+                        item.value = item.value.to(HbarUnit.Hbar);
                     }
                     if (item.value instanceof BigNumber) {
                         total = total.plus(item.value);

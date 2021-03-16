@@ -66,8 +66,8 @@ export default defineComponent({
             state.modalExportGenerateKeystoreState.isOpen = false;
 
             try {
-                const { Ed25519PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-                keyFile.value = await Ed25519PrivateKey.fromString(props.privateKey).toKeystore(password);
+                const { PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+                keyFile.value = await PrivateKey.fromString(props.privateKey).toKeystore(password);
                 state.modalExportDownloadKeystoreState.isBusy = false;
                 const keystoreBlob = new Blob([ keyFile.value.buffer as Uint8Array ]);
                 const keystoreUrl = URL.createObjectURL(keystoreBlob);

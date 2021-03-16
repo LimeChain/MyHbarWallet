@@ -71,14 +71,14 @@ export default defineComponent({
                 for (const item of props.items) {
                     if (item.description === context.root.$t("interfaceUnwrapWHbar.unwrapAmount").toString()) {
                         if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
+                            item.value = item.value.to(HbarUnit.Hbar);
                         }
                         if (item.value instanceof BigNumber) {
                             total = total.plus(item.value);
                         }
                     } else if (item.description === context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString()) {
                         if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
+                            item.value = item.value.to(HbarUnit.Hbar);
                         }
                         if (item.value instanceof BigNumber) {
                             total = total.minus(item.value);

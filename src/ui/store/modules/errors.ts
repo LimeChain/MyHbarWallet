@@ -19,11 +19,11 @@ export interface LedgerErrorTuple {
 }
 
 export interface HederaStatusErrorPayload {
-    error: import("@hashgraph/sdk").HederaStatusError;
+    error: { status: { code: number }; name: string, message: string }
     showAlert: boolean;
 }
 
 export interface HederaStatusErrorTuple {
     message: string;
-    error: import("@hashgraph/sdk").HederaStatusError;
+    error: import("@hashgraph/sdk").ReceiptStatusError | import("@hashgraph/sdk").PrecheckStatusError;
 }

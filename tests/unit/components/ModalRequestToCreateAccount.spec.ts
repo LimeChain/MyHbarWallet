@@ -1,6 +1,6 @@
 import { createLocalVue, mount } from "@vue/test-utils";
 import VueCompositionApi from "@vue/composition-api";
-import { Ed25519PublicKey } from "@hashgraph/sdk";
+import { PublicKey } from "@hashgraph/sdk";
 import VueI18n from "vue-i18n";
 
 import ModalRequestToCreateAccount from "../../../src/ui/components/ModalRequestToCreateAccount.vue";
@@ -11,7 +11,7 @@ describe("ModalRequestToCreateAccount.vue", (): void => {
     localVue.use(VueCompositionApi);
     localVue.use(VueI18n);
 
-    const PUBLIC_KEY = Ed25519PublicKey.fromString(
+    const PUBLIC_KEY = PublicKey.fromString(
         "302a300506032b6570032100dec80229a4a416d552f99c9e9b772ff1061b736ade30bf93abdae260b0975f29"
     );
 

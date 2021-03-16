@@ -102,13 +102,13 @@ export default defineComponent({
                     state.file = new FileId({
                         shard: parseInt(parts[ 0 ]),
                         realm: parseInt(parts[ 1 ]),
-                        file: parseInt(parts[ 2 ])
+                        num: parseInt(parts[ 2 ])
                     });
                 } else {
                     state.account = new AccountId({
                         shard: parseInt(parts[ 0 ]),
                         realm: parseInt(parts[ 1 ]),
-                        account: parseInt(parts[ 2 ])
+                        num: parseInt(parts[ 2 ])
                     });
                 }
             } else if (partialValid.value) {
@@ -124,13 +124,13 @@ export default defineComponent({
                     state.file = new FileId({
                         shard: parseInt("0"),
                         realm: parseInt("0"),
-                        file: parseInt(state.input)
+                        num: parseInt(state.input)
                     });
                 } else {
                     state.account = new AccountId({
                         shard: parseInt("0"),
                         realm: parseInt("0"),
-                        account: parseInt(state.input)
+                        num: parseInt(state.input)
                     });
                 }
             } else {

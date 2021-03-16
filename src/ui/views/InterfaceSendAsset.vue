@@ -132,7 +132,7 @@ export default defineComponent({
                 // (account, asset) pairs at most once
                 state.transfers.forEach((transfer) => {
                     if (transfer.asset === Asset.Hbar) {
-                        tx.addHbarTransfer(transfer.to, new Hbar(transfer.amount));
+                        tx.addHbarTransfer(transfer.to, Hbar.fromString(transfer.amount.toString()));
                         tx.addHbarTransfer(getters.currentUser().session.account, new Hbar(transfer.amount.negated()));
                     } else {
                         const decimals = getters.currentUserTokens()!.filter(
@@ -145,8 +145,8 @@ export default defineComponent({
 
                         const scaledAmount = new BigNumber(transfer.amount!).multipliedBy(scaleFactor);
 
-                        tx.addTokenTransfer(transfer.asset, transfer.to, scaledAmount);
-                        tx.addTokenTransfer(transfer.asset, getters.currentUser().session.account, scaledAmount.negated());
+                        tx.addTokenTransfer(transfer.asset, transfer.to, scaledAmount.toNumber());
+                        tx.addTokenTransfer(transfer.asset, getters.currentUser().session.account, scaledAmount.negated().toNumber());
                     }
                 });
 
@@ -154,11 +154,11 @@ export default defineComponent({
                 const receipt = await transactionIntermediate.getReceipt(client);
 
                 if (receipt != null) {
-                    const { shard, realm, account } = transactionIntermediate.accountId;
-                    const { seconds, nanos } = transactionIntermediate.validStart;
+                    const { shard, realm, num } = transactionIntermediate.transactionId.accountId;
+                    const { seconds, nanos } = transactionIntermediate.transactionId.validStart;
 
                     // build the transaction id from the data.
-                    state.transactionId = `${shard}.${realm}.${account}@${seconds}.${nanos}`;
+                    state.transactionId = `${shard}.${realm}.${num}@${seconds}.${nanos}`;
                 }
 
                 // Refresh Balance

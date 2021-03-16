@@ -14,19 +14,19 @@ export async function constructClient(
     wallet: Wallet,
     network: NetworkSettings
 ): Promise<import("@hashgraph/sdk").Client | undefined> {
-    let privateKey: import("@hashgraph/sdk").Ed25519PrivateKey | null = null;
-    let publicKey: import("@hashgraph/sdk").Ed25519PublicKey | null = null;
-    let signer: import("@hashgraph/sdk").TransactionSigner | null = null;
+    let privateKey: import("@hashgraph/sdk").PrivateKey | null = null;
+    let publicKey: import("@hashgraph/sdk").PublicKey | null = null;
+    // let signer: (message: Uint8Array) => Promise<Uint8Array>;
 
     if (wallet.hasPrivateKey()) {
         privateKey = await wallet.getPrivateKey();
     }
 
-    publicKey = await wallet.getPublicKey() as import("@hashgraph/sdk").Ed25519PublicKey;
-    signer = wallet.signTransaction.bind(wallet) as import("@hashgraph/sdk").TransactionSigner;
+    publicKey = await wallet.getPublicKey() as import("@hashgraph/sdk").PublicKey;
+    const signer = wallet.signTransaction.bind(wallet) as (message: Uint8Array) => Promise<Uint8Array>;
 
     let client: import("@hashgraph/sdk").Client | undefined;
-    const { Client } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+    const { Client, AccountId } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
     if (network.name !== NetworkName.CUSTOM) {
         if (network.name === NetworkName.MAINNET) {
@@ -37,15 +37,10 @@ export async function constructClient(
             client = Client.forPreviewnet();
         }
     } else {
-        client = new Client({
-            network: {
-                [ network.proxy || network.address ]: {
-                    shard: network.node.shard,
-                    realm: network.node.realm,
-                    account: network.node.node
-                }
-            }
-        });
+        const accountId = new AccountId(network.node.shard,
+            network.node.realm,
+            network.node.node);
+        client = Client.forNetwork({ [ network.proxy || network.address ]: accountId });
     }
 
     if (client != null) {
@@ -64,29 +59,36 @@ export async function testClient(
     account: import("@hashgraph/sdk").AccountId,
     client: import("@hashgraph/sdk").Client | undefined
 ): Promise<boolean> {
-    const { CryptoTransferTransaction, HederaStatusError, Status } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+    const { TransferTransaction, Status } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
     if (client != null) {
         try {
-            const tx = new CryptoTransferTransaction();
-            tx.addSender(account, 0); // Transfer 0 Tinybar
+            const tx = new TransferTransaction();
+            tx.addHbarTransfer(account, 0); // Transfer 0 Tinybar
             tx.setMaxTransactionFee(1); // Max Fee 1 Tinybar
             await (await tx.execute(client)).getReceipt(client);
         } catch (error) {
-            if (error instanceof HederaStatusError) {
-                // If the transaction fails with Insufficient Tx Fee, this means
-                // that the account ID verification succeeded before this point
-                // Same for Insufficient Payer Balance
-                if (error.status.code === Status.InsufficientTxFee.code ||
-                    error.status.code === Status.InsufficientPayerBalance.code) {
-                    return true;
-                }
-            }
-            throw error;
+            await handleError(error);
         }
     }
 
     return false;
+}
+
+async function handleError(error: { status: { code: number }; name: string }): Promise<void> {
+    const { ReceiptStatusError, PrecheckStatusError, Status } = await import("@hashgraph/sdk");
+
+    if (error instanceof PrecheckStatusError || error instanceof ReceiptStatusError) {
+        console.log(error);
+        // If the transaction fails with Insufficient Tx Fee, this means
+        // that the account ID verification succeeded before this point
+        // Same for Insufficient Payer Balance
+        if (error.status.code === Status.InsufficientTxFee._code ||
+            error.status.code === Status.InsufficientPayerBalance._code) {
+            return;
+        }
+    }
+    throw error;
 }
 
 export async function constructSession(
@@ -112,7 +114,7 @@ export async function constructSession(
 export async function getBalance(
     accountId: AccountId,
     client: Client
-): Promise<import("@hashgraph/sdk").Hbar | null> {
+): Promise<import("@hashgraph/sdk/lib/account/AccountBalance").default | null> {
     try {
         const { AccountBalanceQuery } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
@@ -164,22 +166,29 @@ export async function getTokens(
     client: Client,
     testnet?: boolean
 ): Promise<Token[] | null> {
-    const { TokenBalanceQuery } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+    const { AccountBalanceQuery } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
     try {
-        const tokenBalances = await new TokenBalanceQuery()
+        const tokenBalances = await new AccountBalanceQuery()
             .setAccountId(accountId)
             .execute(client);
+        const tokens: Token[] = [];
 
-        const keys = [ ...tokenBalances.keys() ];
-        const balances = [ ...tokenBalances.values() ];
+        if (!tokenBalances.tokens) {
+            return tokens;
+        }
+
+        const keys = [ ...tokenBalances.tokens.keys() ];
+        const balances = [ ...tokenBalances.tokens.values() ];
+
+        // const keys = [ ...tokenBalances.keys() ];
+        // const balances = [ ...tokenBalances.values() ];
         const decimals: Map<string, number> = await getTokenDecimals(keys.map((key) => key.toString()), testnet ?? false);
 
-        const tokens: Token[] = [];
         for (const [ i, element ] of keys.entries()) {
             tokens.push({
                 tokenId: element,
-                balance: balances[ i ],
+                balance: new BigNumber(balances[ i ].toString()),
                 decimals: decimals.get(element.toString())!
             });
         }
@@ -199,7 +208,7 @@ export async function associateTokenWithAccount(
     try {
         await (await new TokenAssociateTransaction()
             .setAccountId(accountId)
-            .addTokenId(tokenId)
+            .setTokenIds([ tokenId ])
             .execute(client))
             .getReceipt(client);
     } catch (error) {
@@ -215,10 +224,10 @@ export async function sendToken(
     memo?: string | null
 ): Promise<void> {
     try {
-        const { TokenTransferTransaction } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-        const tx = new TokenTransferTransaction()
-            .addRecipient(tokenId, recipient, amount)
-            .addSender(tokenId, client._getOperatorAccountId()!, amount);
+        const { TransferTransaction } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+        const tx = new TransferTransaction()
+            .addTokenTransfer(tokenId, recipient, amount.toNumber())
+            .addTokenTransfer(tokenId, client.operatorAccountId!, amount.toNumber());
 
         if (memo != null) {
             tx.setTransactionMemo(memo);

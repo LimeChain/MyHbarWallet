@@ -105,7 +105,7 @@ export default defineComponent({
 
         const operator = computed(() => {
             if (account.value != null) {
-                return `${account.value.shard}.${account.value.realm}.${account.value.account}`;
+                return `${account.value.shard}.${account.value.realm}.${account.value.num}`;
             }
 
             return null;

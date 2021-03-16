@@ -73,7 +73,7 @@ export default defineComponent({
                 for (const item of props.items) {
                     if (item.description === context.root.$t("interfaceSendTransfer.transferAmount").toString()) {
                         if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
+                            item.value = item.value.to(HbarUnit.Hbar);
                         }
                         if (item.value instanceof BigNumber) {
                             total = total.plus(item.value);
@@ -81,14 +81,14 @@ export default defineComponent({
                         }
                     } else if (item.description === context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString()) {
                         if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
+                            item.value = item.value.to(HbarUnit.Hbar);
                         }
                         if (item.value instanceof BigNumber) {
                             total = total.plus(item.value);
                         }
                     } else {
                         if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
+                            item.value = item.value.to(HbarUnit.Hbar);
                         }
                         if (item.value instanceof BigNumber) {
                             wrapAmount = wrapAmount.minus(item.value);

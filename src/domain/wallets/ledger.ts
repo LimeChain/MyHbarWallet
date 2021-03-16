@@ -37,18 +37,18 @@ interface APDU {
 }
 
 export default class Ledger implements Wallet {
-    private publicKey: import("@hashgraph/sdk").Ed25519PublicKey | null = null;
+    private publicKey: import("@hashgraph/sdk").PublicKey | null = null;
     private transport: import("@ledgerhq/hw-transport").default | null = null;
 
     public hasPrivateKey(): boolean {
         return false;
     }
 
-    public getPrivateKey(): Promise<import("@hashgraph/sdk").Ed25519PrivateKey> {
+    public getPrivateKey(): Promise<import("@hashgraph/sdk").PrivateKey> {
         throw new Error("Cannot get private key from ledger wallet");
     }
 
-    public async getPublicKey(): Promise<import("@hashgraph/sdk").Ed25519PublicKey | null> {
+    public async getPublicKey(): Promise<import("@hashgraph/sdk").PublicKey | null> {
         if (this.publicKey == null) {
             // eslint-disable-next-line no-undef
             const buffer = Buffer.alloc(4);
@@ -69,7 +69,7 @@ export default class Ledger implements Wallet {
                     .slice(0, -2)
                     .toString("hex");
 
-                const publicKey = (await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk")).Ed25519PublicKey.fromString(publicKeyStr);
+                const publicKey = (await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk")).PublicKey.fromString(publicKeyStr);
 
                 this.publicKey = publicKey;
             } else {

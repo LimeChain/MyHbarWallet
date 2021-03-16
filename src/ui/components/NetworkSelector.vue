@@ -136,9 +136,9 @@ export default defineComponent({
                 // Mismatch between "node" and "address"
                 // Consider reimplementing IDInput to handle a general Id
                 state.id = {
-                    shard: id.shard,
-                    realm: id.realm,
-                    node: id.account
+                    shard: id.shard.toNumber(),
+                    realm: id.realm.toNumber(),
+                    node: id.num.toNumber()
                 } as NodeId;
             }
         }

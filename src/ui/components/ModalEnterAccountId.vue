@@ -104,7 +104,7 @@ export interface State {
     account: import("@hashgraph/sdk").AccountId | null;
     valid: boolean;
     networkValid: boolean;
-    possiblePublicKeys: Array<import("@hashgraph/sdk").Ed25519PublicKey>;
+    possiblePublicKeys: Array<import("@hashgraph/sdk").PublicKey>;
 }
 
 export interface Props {

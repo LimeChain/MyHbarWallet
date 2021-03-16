@@ -215,7 +215,7 @@ export default defineComponent({
             () => state.account,
             (newValue: AccountId | null) => {
                 if (newValue) {
-                    state.accountString = `${newValue.shard}.${newValue.realm}.${newValue.account}`;
+                    state.accountString = `${newValue.shard}.${newValue.realm}.${newValue.num}`;
                 }
             }
         );

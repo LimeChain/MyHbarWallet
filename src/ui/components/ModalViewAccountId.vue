@@ -70,7 +70,7 @@ export default defineComponent({
         const compKey = ref(0);
 
         const accountId = computed(() => props.value ?
-            `${props.value.shard}.${props.value.realm}.${props.value.account}` :
+            `${props.value.shard}.${props.value.realm}.${props.value.num}` :
             "");
 
         async function handleClickCopy(): Promise<void> {

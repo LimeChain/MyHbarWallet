@@ -121,7 +121,8 @@ export default defineComponent({
                 txType: "transfer",
                 submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true
+                termsShowNonOperator: true,
+                isWrapSummary: false
             },
             modalSuccessState: {
                 isOpen: false,
@@ -140,7 +141,7 @@ export default defineComponent({
             () => state.account,
             (newValue: AccountId | null) => {
                 if (newValue) {
-                    state.accountString = `${newValue.shard}.${newValue.realm}.${newValue.account}`;
+                    state.accountString = `${newValue.shard}.${newValue.realm}.${newValue.num}`;
                 }
             }
         );
@@ -328,16 +329,16 @@ export default defineComponent({
                 }
 
                 const recipient: AccountId | null = state.account;
-                const { CryptoTransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+                const { TransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
                 const sendAmount = new Hbar(state.amount);
 
-                const tx = new CryptoTransferTransaction()
-                    .addSender(
+                const tx = new TransferTransaction()
+                    .addHbarTransfer(
                         getters.currentUser().session.account,
                         sendAmount
                     )
-                    .addRecipient(recipient, sendAmount)
-                    .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
+                    .addHbarTransfer(recipient, sendAmount)
+                    .setMaxTransactionFee(Hbar.fromTinybars(estimatedFeeTinybar.toNumber()));
 
                 if (state.memo == null || state.memo === "") {
                     state.memo = " "; // Hack for Nano X paging
@@ -349,11 +350,11 @@ export default defineComponent({
                 const receipt = await transactionIntermediate.getReceipt(client);
 
                 if (receipt != null) {
-                    const { shard, realm, account } = transactionIntermediate.accountId;
-                    const { seconds, nanos } = transactionIntermediate.validStart;
+                    const { shard, realm, num } = transactionIntermediate.transactionId.accountId;
+                    const { seconds, nanos } = transactionIntermediate.transactionId.validStart;
 
                     // build the transaction id from the data.
-                    state.transactionId = `${shard}.${realm}.${account}@${seconds}.${nanos}`;
+                    state.transactionId = `${shard}.${realm}.${num}@${seconds}.${nanos}`;
                 }
 
                 // Refresh Balance

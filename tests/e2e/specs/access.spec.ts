@@ -29,7 +29,7 @@ import {
     testnetNetworkOption
 } from "../fixtures/access";
 
-import { Ed25519PrivateKey } from '@hashgraph/sdk';
+import { PrivateKey } from '@hashgraph/sdk';
 import { isString } from "cypress/types/lodash";
 
 // Note: Netlify cannot currently parse JSON arrays (however they are specified)
@@ -319,8 +319,8 @@ describe("Access My Account", () => {
             KEY_PRIVATE_KEY
         } = Cypress.env();
 
-        const key = Ed25519PrivateKey.fromString(KEY_PRIVATE_KEY);
-        const KEY_PRIVATE_KEY_UNPREFIXED = key.toString(true);
+        const key = PrivateKey.fromString(KEY_PRIVATE_KEY);
+        const KEY_PRIVATE_KEY_UNPREFIXED = key.toString();
 
         cy
             .get(softwareTile)
@@ -354,9 +354,9 @@ describe("Access My Account", () => {
             KEY_PRIVATE_KEY
         } = Cypress.env();
 
-        const key = Ed25519PrivateKey.fromString(KEY_PRIVATE_KEY);
-        const publicKeyString = key.publicKey.toString(true);
-        const KEY_PRIVATE_KEY_COMBINED = `${key.toString(true)}${publicKeyString}`;  // true = no prefix
+        const key = PrivateKey.fromString(KEY_PRIVATE_KEY);
+        const publicKeyString = key.publicKey.toString();
+        const KEY_PRIVATE_KEY_COMBINED = `${key.toString()}${publicKeyString}`;  // true = no prefix
 
         cy
             .get(softwareTile)

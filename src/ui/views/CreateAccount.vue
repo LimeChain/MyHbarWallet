@@ -140,12 +140,12 @@ export default defineComponent({
 
         const keystoreFile = ref<HTMLAnchorElement | null>(null);
 
-        function setPublicKey(newPublicKey: import("@hashgraph/sdk").Ed25519PublicKey | null): void {
+        function setPublicKey(newPublicKey: import("@hashgraph/sdk").PublicKey | null): void {
             state.publicKey = newPublicKey;
             state.modalEnterAccountIdState.possiblePublicKeys.push(newPublicKey);
         }
 
-        function setPrivateKey(newPrivateKey: import("@hashgraph/sdk").Ed25519PrivateKey | null): void {
+        function setPrivateKey(newPrivateKey: import("@hashgraph/sdk").PrivateKey | null): void {
             state.privateKey = newPrivateKey;
             setPublicKey(newPrivateKey ? newPrivateKey.publicKey : null);
         }
@@ -212,7 +212,7 @@ export default defineComponent({
 
                         state.modalCreateByHardwareState.isBusy = true;
                         state.wallet = new Ledger();
-                        state.publicKey = (await state.wallet!.getPublicKey()) as import("@hashgraph/sdk").Ed25519PublicKey;
+                        state.publicKey = (await state.wallet!.getPublicKey()) as import("@hashgraph/sdk").PublicKey;
                         state.modalEnterAccountIdState.possiblePublicKeys.push(state.publicKey);
 
                         Vue.nextTick(() => {
@@ -250,8 +250,8 @@ export default defineComponent({
             state.modalDownloadKeystoreState.isOpen = true;
 
             try {
-                const { Ed25519PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-                const privateKey = await Ed25519PrivateKey.generate();
+                const { PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+                const privateKey = await PrivateKey.generate();
                 state.keyFile = await privateKey.toKeystore(password);
                 setPrivateKey(privateKey);
                 state.modalDownloadKeystoreState.isBusy = false;
@@ -292,7 +292,7 @@ export default defineComponent({
             });
         }
 
-        function handleCreateByPhraseSubmit(newPrivateKey: import("@hashgraph/sdk").Ed25519PrivateKey): void {
+        function handleCreateByPhraseSubmit(newPrivateKey: import("@hashgraph/sdk").PrivateKey): void {
             state.modalCreateByPhraseState.isOpen = false;
 
             setPrivateKey(newPrivateKey);
@@ -309,8 +309,8 @@ export default defineComponent({
                 if (state.privateKey != null) {
                     state.wallet = new SoftwareWallet(
                         state.loginMethod!,
-                        state.privateKey as import("@hashgraph/sdk").Ed25519PrivateKey,
-                        state.publicKey as import("@hashgraph/sdk").Ed25519PublicKey
+                        state.privateKey as import("@hashgraph/sdk").PrivateKey,
+                        state.publicKey as import("@hashgraph/sdk").PublicKey
                     );
                 }
             }
@@ -323,8 +323,8 @@ export default defineComponent({
                     mutations.navigateToInterface();
                 });
             } catch (error) {
-                const { HederaStatusError } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-                if (error instanceof HederaStatusError) {
+                const { PrecheckStatusError, ReceiptStatusError } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+                if (error instanceof PrecheckStatusError || error instanceof ReceiptStatusError) {
                     const result: HederaStatusErrorTuple = await actions.handleHederaError({ error, showAlert: false });
 
                     state.modalEnterAccountIdState.errorMessage =

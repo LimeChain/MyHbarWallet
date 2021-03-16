@@ -104,7 +104,7 @@ export default defineComponent({
                     }.${
                         accountId.realm
                     }.${
-                        accountId.account}`
+                        accountId.num}`
                 );
             }
 

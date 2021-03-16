@@ -48,6 +48,7 @@ import { formatHbar } from "../../service/format";
 import Button from "../components/Button.vue";
 import IdInput from "../components/IDInput.vue";
 import { actions, getters } from "../store";
+import { FileId as HederaFileId } from "@hashgraph/sdk";
 
 declare const MHW_ENV: string;
 
@@ -97,7 +98,8 @@ export default defineComponent({
                 txType: "downloadFile",
                 submitLabel: context.root.$t("interfaceDownloadFile.feeSummary.submit").toString(),
                 cancelLabel: context.root.$t("interfaceDownloadFile.feeSummary.cancel").toString(),
-                termsShowNonOperator: false
+                termsShowNonOperator: false,
+                isWrapSummary: false
             } as ModalFeeSummaryState,
             success: {
                 isOpen: false,
@@ -137,14 +139,15 @@ export default defineComponent({
 
             const { FileContentsQuery, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
             const client = getters.currentUser().session.client;
-            client.setMaxQueryPayment(Hbar.fromTinybar(100000000));
+            client.setMaxQueryPayment(Hbar.fromTinybars(100000000));
 
             try {
+                const fileId = new HederaFileId(state.fileId.shard!, state.fileId.realm, state.fileId.file);
                 const getEstimate = await new FileContentsQuery()
-                    .setFileId(state.fileId)
+                    .setFileId(fileId)
                     .getCost(client);
 
-                state.fee = new BigNumber(await getEstimate.value());
+                state.fee = new BigNumber(getEstimate.toString());
                 state.modalFeeSummaryState.amount = summaryAmount.value;
                 const items: Item[] = [
                     {
@@ -177,13 +180,14 @@ export default defineComponent({
         async function triggerDownload(): Promise<void> {
             const { FileContentsQuery, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
             const client = getters.currentUser().session.client;
-            client.setMaxQueryPayment(Hbar.fromTinybar(100000000));
+            client.setMaxQueryPayment(Hbar.fromTinybars(100000000));
 
             try {
                 const file = ref<Uint8Array | null>(null);
+                const fileId = new HederaFileId(state.fileId.shard!, state.fileId.realm, state.fileId.file);
 
                 file.value = await new FileContentsQuery()
-                    .setFileId(state.fileId)
+                    .setFileId(fileId)
                     .execute(client);
 
                 if (file.value == null) {

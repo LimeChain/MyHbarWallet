@@ -1,15 +1,15 @@
 import Wallet, { LoginMethod } from "./wallet";
 
 export default class SoftwareWallet implements Wallet {
-    private readonly privateKey: import("@hashgraph/sdk").Ed25519PrivateKey;
-    private readonly publicKey: import("@hashgraph/sdk").Ed25519PublicKey;
+    private readonly privateKey: import("@hashgraph/sdk").PrivateKey;
+    private readonly publicKey: import("@hashgraph/sdk").PublicKey;
 
     private readonly loginMethod: LoginMethod;
 
     public constructor(
         loginMethod: LoginMethod,
-        privateKey: import("@hashgraph/sdk").Ed25519PrivateKey,
-        publicKey?: import("@hashgraph/sdk").Ed25519PublicKey
+        privateKey: import("@hashgraph/sdk").PrivateKey,
+        publicKey?: import("@hashgraph/sdk").PublicKey
     ) {
         this.privateKey = privateKey;
         this.publicKey = publicKey ?? privateKey.publicKey;
@@ -24,12 +24,12 @@ export default class SoftwareWallet implements Wallet {
         return this.loginMethod;
     }
 
-    public getPrivateKey(): Promise<import("@hashgraph/sdk").Ed25519PrivateKey> {
+    public getPrivateKey(): Promise<import("@hashgraph/sdk").PrivateKey> {
         // eslint-disable-next-line compat/compat
         return Promise.resolve(this.privateKey);
     }
 
-    public getPublicKey(): Promise<import("@hashgraph/sdk").Ed25519PublicKey | null> {
+    public getPublicKey(): Promise<import("@hashgraph/sdk").PublicKey | null> {
         // eslint-disable-next-line compat/compat
         return Promise.resolve(this.publicKey);
     }

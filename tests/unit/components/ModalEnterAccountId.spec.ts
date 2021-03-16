@@ -1,7 +1,7 @@
 import { createLocalVue, mount } from "@vue/test-utils";
 import VueCompositionApi from "@vue/composition-api";
 import VueI18n from "vue-i18n";
-import { Ed25519PublicKey } from "@hashgraph/sdk";
+import { PublicKey } from "@hashgraph/sdk";
 
 import ModalEnterAccountId from "../../../src/ui/components/ModalEnterAccountId.vue";
 import i18n from "../../../src/service/i18n";
@@ -149,16 +149,16 @@ describe("ModalEnterAccountId.vue", (): void => {
             account: "",
             errorMessage: "Error Message",
             possiblePublicKeys: [
-                Ed25519PublicKey.fromString(
+                PublicKey.fromString(
                     "302a300506032b6570032100480474335c38c27bfde1f0c2010d3db95eeb74a1f8ac65212f7824ce1ab84eca"
                 ),
-                Ed25519PublicKey.fromString(
+                PublicKey.fromString(
                     "393f0b3878c12d76926ac62cf048bd47fa939ea74c1bbe1411062fabdd02ccb7"
                 ),
-                Ed25519PublicKey.fromString(
+                PublicKey.fromString(
                     "b1b8a35b91cb8ad9f4aa0caad9310d74a6e95a5493c78158c6a7e237e49e038f"
                 ),
-                Ed25519PublicKey.fromString(
+                PublicKey.fromString(
                     "011a8d4eb2aaa9cf03af805bae828ba8e3c954bb5a7571f02f2288d89264ab1c"
                 )
             ]

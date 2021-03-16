@@ -107,7 +107,8 @@ export default defineComponent({
                 txType: "uploadFile",
                 submitLabel: context.root.$t("interfaceDownloadFile.feeSummary.submit").toString(),
                 cancelLabel: context.root.$t("interfaceDownloadFile.feeSummary.cancel").toString(),
-                termsShowNonOperator: false
+                termsShowNonOperator: false,
+                isWrapSummary: false
             } as ModalFeeSummaryState,
             uploadProgress: {
                 isOpen: false,
@@ -130,7 +131,7 @@ export default defineComponent({
 
         const fileIDString = computed(() => {
             if (fileID.value != null) {
-                return `${fileID.value!.shard.toString()}.${fileID.value!.realm.toString()}.${fileID.value!.file.toString()}`;
+                return `${fileID.value!.shard.toString()}.${fileID.value!.realm.toString()}.${fileID.value!.num.toString()}`;
             }
 
             return "";
@@ -217,9 +218,9 @@ export default defineComponent({
 
         async function fileCreateUpload(
             chunks: Uint8Array[],
-            client: import("@hashgraph/sdk").Client | import("@hashgraph/sdk/lib/index-node").Client
+            client: import("@hashgraph/sdk").Client | import("@hashgraph/sdk/lib/index").Client
         ): Promise<import("@hashgraph/sdk").FileId> {
-            const { FileCreateTransaction, Ed25519PublicKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+            const { FileCreateTransaction, PublicKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
             state.isBusy = true;
             state.modalFeeSummaryState.isBusy = true;
@@ -242,23 +243,23 @@ export default defineComponent({
                 const chunk = chunks.shift() as Uint8Array;
                 const txId = await new FileCreateTransaction()
                     .setContents(chunk)
-                    .setExpirationTime(Date.now() + 7890000000)
-                    .addKey(Ed25519PublicKey.fromString(publicKey.toString())) // lol
+                    .setExpirationTime(new Date(Date.now() + 7890000000))
+                    .setKeys([ PublicKey.fromString(publicKey.toString()) ]) // lol
                     .setMaxTransactionFee(520000000)
                     .execute(client);
 
                 receipt.value = await txId.getReceipt(client);
 
-                const { accountId, validStart } = txId;
-                const { shard, realm, account } = accountId;
+                const { accountId, validStart } = txId.transactionId;
+                const { shard, realm, num } = accountId;
                 const { seconds, nanos } = validStart;
 
-                state.transactionId = `${shard}.${realm}.${account}@${seconds}.${nanos}`;
+                state.transactionId = `${shard}.${realm}.${num}@${seconds}.${nanos}`;
 
                 state.uploadProgress.currentChunk += 1;
 
                 if (receipt.value != null) {
-                    fileId = receipt.value.getFileId();
+                    fileId = receipt.value.fileId!;
                 }
             } catch (error) {
                 state.uploadProgress.wasSuccess = false;

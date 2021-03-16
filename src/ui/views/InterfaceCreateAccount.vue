@@ -66,7 +66,6 @@
 import { computed, defineComponent, reactive, SetupContext, watch, Ref, ref } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
 import { mdiHelpCircleOutline } from "@mdi/js";
-import { BadKeyError } from "@hashgraph/sdk";
 
 import Button from "../components/Button.vue";
 import InterfaceForm from "../components/InterfaceForm.vue";
@@ -98,8 +97,8 @@ interface State {
 
 async function isPublicKeyValid(key: string, retry: boolean | undefined): Promise<boolean> {
     try {
-        const { Ed25519PublicKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-        Ed25519PublicKey.fromString(key);
+        const { BadKeyError, PublicKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+        PublicKey.fromString(key);
         return true;
     } catch (error) {
         if (error instanceof BadKeyError) {
@@ -141,7 +140,8 @@ export default defineComponent({
                 txType: "transfer",
                 submitLabel: context.root.$t("interfaceCreateAccount.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceCreateAccount.feeSummary.dismiss").toString(),
-                termsShowNonOperator: false
+                termsShowNonOperator: false,
+                isWrapSummary: false
             },
             modalSuccessState: {
                 isOpen: false,
@@ -161,23 +161,23 @@ export default defineComponent({
         async function handleCreateAccount(): Promise<void> {
             state.isBusy = true;
             state.modalSummaryState.isBusy = true;
-            const { HederaStatusError, Status, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+            const { ReceiptStatusError, PrecheckStatusError, Status, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
             try {
                 // The new wallet's initial balance
-                const newBalanceTinybar = new Hbar(state.newBalance).asTinybar();
+                const newBalanceTinybar = new Hbar(state.newBalance).toTinybars();
 
                 const {
                     AccountCreateTransaction,
-                    Ed25519PublicKey
+                    PublicKey
                 } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
                 const client = getters.currentUser().session.client;
-                const key = Ed25519PublicKey.fromString(state.publicKey);
+                const key = PublicKey.fromString(state.publicKey);
 
                 const transaction = await new AccountCreateTransaction()
-                    .setInitialBalance(Hbar.fromTinybar(newBalanceTinybar))
-                    .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar))
+                    .setInitialBalance(Hbar.fromTinybars(newBalanceTinybar))
+                    .setMaxTransactionFee(Hbar.fromTinybars(estimatedFeeTinybar.toNumber()))
                     .setKey(key);
 
                 // NOTE: We should consider adding OptionalMemo for Account Creation
@@ -185,9 +185,9 @@ export default defineComponent({
                     transaction.setTransactionMemo(" "); // Hack to deal with broken Nano X paging macro
                 }
 
-                const transactionId = await transaction.execute(client);
+                const transactionResponse = await transaction.execute(client);
 
-                const receipt = await transactionId.getReceipt(client);
+                const receipt = await transactionResponse.getReceipt(client);
 
                 // Handle undefined
                 if (receipt == null) {
@@ -199,14 +199,14 @@ export default defineComponent({
                 // state.accountIdIntermediate must be AccountID
                 // get shard, realm, state.account separately and construct a new object
                 if (receipt != null) {
-                    const createdAccount = receipt.getAccountId();
+                    const createdAccount = receipt.accountId;
 
-                    const { nanos, seconds } = transactionId.validStart;
-                    const { shard, realm, account } = transactionId.accountId;
+                    const { nanos, seconds } = transactionResponse.transactionId.validStart;
+                    const { shard, realm, num } = transactionResponse.transactionId.accountId;
 
-                    state.transactionId = `${shard}.${realm}.${account}@${seconds}.${nanos}`;
+                    state.transactionId = `${shard}.${realm}.${num}@${seconds}.${nanos}`;
 
-                    state.account = `${createdAccount.shard}.${createdAccount.realm}.${createdAccount.account}`;
+                    state.account = `${createdAccount?.shard}.${createdAccount?.realm}.${createdAccount?.num}`;
                 }
 
                 // If creating state.account succeeds then remove errors
@@ -218,15 +218,15 @@ export default defineComponent({
                 state.modalSummaryState.isOpen = false;
                 state.modalSuccessState.isOpen = true;
             } catch (error) {
-                if (error instanceof HederaStatusError) {
+                if (error instanceof PrecheckStatusError || error instanceof ReceiptStatusError) {
                     const errorMessage = (await actions.handleHederaError({
                         error,
                         showAlert: false
                     })).message;
 
                     switch (error.status.code) {
-                        case Status.InsufficientAccountBalance.code:
-                        case Status.InsufficientPayerBalance.code:
+                        case Status.InsufficientAccountBalance.toString():
+                        case Status.InsufficientPayerBalance.toString():
                             state.newBalanceError = errorMessage;
                             break;
                         default:

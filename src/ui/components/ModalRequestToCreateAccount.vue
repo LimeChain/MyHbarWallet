@@ -74,7 +74,7 @@ import ReadOnlyInput from "./ReadOnlyInput.vue";
 
 interface Props {
     isOpen: boolean;
-    publicKey: import("@hashgraph/sdk").Ed25519PublicKey;
+    publicKey: import("@hashgraph/sdk").PublicKey;
     event: string;
 }
 
@@ -93,7 +93,7 @@ export default defineComponent({
     },
     props: {
         isOpen: Boolean,
-        publicKey: (Object as unknown) as PropType<import("@hashgraph/sdk").Ed25519PublicKey>,
+        publicKey: (Object as unknown) as PropType<import("@hashgraph/sdk").PublicKey>,
         event: String
     },
     setup(props: Props, context: SetupContext) {

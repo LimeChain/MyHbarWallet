@@ -74,7 +74,7 @@ async function getUser(): Promise<User | null> {
     return getters.currentUser();
 }
 
-async function getPrivateKey(): Promise<import("@hashgraph/sdk").Ed25519PrivateKey | null> {
+async function getPrivateKey(): Promise<import("@hashgraph/sdk").PrivateKey | null> {
     const user = await getUser();
     if (user != null) {
         if (user.wallet != null) {
@@ -124,7 +124,7 @@ export default defineComponent({
             viewAccountQrCodeIsOpen: false,
             viewKeysIsOpen: false,
             publicKey: null as import("@hashgraph/sdk").PublicKey | null,
-            privateKey: null as import("@hashgraph/sdk").Ed25519PrivateKey | null
+            privateKey: null as import("@hashgraph/sdk").PrivateKey | null
         });
 
         watch(getPublicKey, async(result: Promise<import("@hashgraph/sdk").PublicKey | null>) => {
@@ -133,7 +133,7 @@ export default defineComponent({
 
         watch(
             getPrivateKey,
-            async(result: Promise<import("@hashgraph/sdk").Ed25519PrivateKey | null>) => {
+            async(result: Promise<import("@hashgraph/sdk").PrivateKey | null>) => {
                 state.privateKey = await result;
             }
         );
@@ -147,7 +147,7 @@ export default defineComponent({
 
         const privateKeyString = computed(() => {
             if (state.privateKey != null) {
-                return state.privateKey.toString(true);
+                return state.privateKey.toString();
             }
 
             return "";
@@ -155,7 +155,7 @@ export default defineComponent({
 
         const publicKeyString = computed(() => {
             if (state.publicKey != null) {
-                return (state.publicKey as import("@hashgraph/sdk").Ed25519PublicKey).toString(true);
+                return (state.publicKey as import("@hashgraph/sdk").PublicKey).toString();
             }
 
             return "";

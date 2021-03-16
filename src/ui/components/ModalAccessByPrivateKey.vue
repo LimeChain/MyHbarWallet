@@ -65,12 +65,13 @@ export default defineComponent({
         // No, it cannot be moved to enclosing scope
         // eslint-disable-next-line unicorn/consistent-function-scoping
         async function isValid(): Promise<boolean> {
-            const { Ed25519PrivateKey, BadKeyError } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+            const { PrivateKey, BadKeyError } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
             try {
-                Ed25519PrivateKey.fromString(props.state.rawPrivateKey);
+                PrivateKey.fromString(props.state.rawPrivateKey);
                 return true;
             } catch (error) {
+                console.log(error);
                 // The exception message changes depending on the input
                 if (error instanceof BadKeyError) {
                     return false;

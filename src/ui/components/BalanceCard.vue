@@ -84,7 +84,7 @@ export default defineComponent({
         const hasFetchedRate = computed(() => getters.exchangeRate() != null);
         const balanceHbar = computed(() => {
             if (Hbarf.value != null && HbarfUnit.value != null) {
-                return getters.currentUserBalance()!.as(HbarfUnit.value.Hbar) || new Hbarf.value(0);
+                return getters.currentUserBalance()!.to(HbarfUnit.value.Hbar) || new Hbarf.value(0);
             }
             return new BigNumber(0);
         });

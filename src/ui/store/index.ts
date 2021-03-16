@@ -228,45 +228,45 @@ export const actions = {
         const { Status } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
         switch (payload.error.status.code) {
-            case Status.PayerAccountNotFound.code:
+            case Status.PayerAccountNotFound._code:
                 message = i18n.t("common.error.payerDoesNotExist").toString();
                 break;
-            case Status.InvalidAccountId.code:
+            case Status.InvalidAccountId._code:
                 message = i18n.t("common.error.invalidAccount").toString();
                 break;
-            case Status.InvalidSignature.code:
+            case Status.InvalidSignature._code:
                 message = i18n.t("common.error.invalidSignature").toString();
                 break;
-            case Status.InvalidTransactionStart.code:
+            case Status.InvalidTransactionStart._code:
                 message = i18n.t("common.error.invalidDateTime").toString();
                 break;
-            case Status.InsufficientTxFee.code:
+            case Status.InsufficientTxFee._code:
                 message = i18n
                     .t("common.error.insufficientTransactionFee")
                     .toString();
                 break;
-            case Status.InsufficientAccountBalance.code:
-            case Status.InsufficientPayerBalance.code:
+            case Status.InsufficientAccountBalance._code:
+            case Status.InsufficientPayerBalance._code:
                 message = i18n
                     .t("common.error.insufficientPayerBalance")
                     .toString();
                 break;
-            case Status.AccountRepeatedInAccountAmounts.code:
+            case Status.AccountRepeatedInAccountAmounts._code:
                 message = i18n
                     .t("common.error.cannotSendHbarToYourself")
                     .toString();
                 break;
-            case Status.TokenAlreadyAssociatedToAccount.code:
+            case Status.TokenAlreadyAssociatedToAccount._code:
                 message = i18n
                     .t("common.error.tokenAlreadyAssociated")
                     .toString();
                 break;
-            case Status.TokenNotAssociatedToAccount.code:
+            case Status.TokenNotAssociatedToAccount._code:
                 message = i18n
                     .t("common.error.tokenNotAssociated")
                     .toString();
                 break;
-            case Status.AccountKycNotGrantedForToken.code:
+            case Status.AccountKycNotGrantedForToken._code:
                 message = i18n
                     .t("common.error.tokenAccountNeedsKYC")
                     .toString();
@@ -382,10 +382,11 @@ export const actions = {
         let balance: Hbar | null = null;
 
         try {
-            balance = await getBalance(
+            const accountBalance = await getBalance(
                 store.state.account.user?.session.account!,
                 store.state.account.user?.session.client as Client
             );
+            balance = accountBalance ? accountBalance.hbars : null;
         } catch (error) {
             this.handleHederaError({ error, showAlert: true });
         }

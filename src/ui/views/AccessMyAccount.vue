@@ -147,19 +147,19 @@ export default defineComponent({
             wallet: null
         });
 
-        type SeedInfo = import("@hashgraph/sdk").Mnemonic | import("@hashgraph/sdk").Ed25519PrivateKey;
+        type SeedInfo = import("@hashgraph/sdk").Mnemonic | import("@hashgraph/sdk").PrivateKey;
         async function addKeysFromSeed(info: SeedInfo, password?: string): Promise<void> {
-            const { Ed25519PrivateKey, Mnemonic } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+            const { PrivateKey, Mnemonic } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
             if (info instanceof Mnemonic) {
                 // Mnemonic
                 if (info.words.length === WordCount.TwentyFour) {
                     // Add Legacy Derivation Scheme Keys
-                    const legacyKey = await info.toLegacyPrivateKey();
+                    const legacyKey = await info.toPrivateKey();
                     state.possibleKeys.push(legacyKey);
                     state.modalEnterAccountIdState.possiblePublicKeys.push(legacyKey.publicKey);
 
-                    const derivedLegacyKey = await legacyKey.legacyDerive(0);
+                    const derivedLegacyKey = await legacyKey.derive(0);
                     state.possibleKeys.push(derivedLegacyKey);
                     state.modalEnterAccountIdState.possiblePublicKeys.push(derivedLegacyKey.publicKey);
                 }
@@ -170,12 +170,12 @@ export default defineComponent({
                 state.possibleKeys.push(key);
                 state.modalEnterAccountIdState.possiblePublicKeys.push(key.publicKey);
 
-                if (key.supportsDerivation) {
-                    const derivedKey = await key.derive2(0);
+                if (key.isDerivable()) {
+                    const derivedKey = await key.derive(0);
                     state.possibleKeys.push(derivedKey);
                     state.modalEnterAccountIdState.possiblePublicKeys.push(derivedKey.publicKey);
                 }
-            } else if (info instanceof Ed25519PrivateKey) {
+            } else if (info instanceof PrivateKey) {
                 state.possibleKeys.push(info);
                 state.modalEnterAccountIdState.possiblePublicKeys.push(info.publicKey);
             }
@@ -287,7 +287,7 @@ export default defineComponent({
                         state.wallet = new Ledger();
                         state.loginMethod = LoginMethod.Ledger;
 
-                        const publicKey = (await state.wallet!.getPublicKey()) as import("@hashgraph/sdk").Ed25519PublicKey;
+                        const publicKey = (await state.wallet!.getPublicKey()) as import("@hashgraph/sdk").PublicKey;
                         state.modalEnterAccountIdState.possiblePublicKeys.push(publicKey);
 
                         Vue.nextTick(() => {
@@ -325,9 +325,9 @@ export default defineComponent({
             pwState.isBusy = true;
 
             try {
-                const { Ed25519PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+                const { PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
-                const key = await Ed25519PrivateKey.fromKeystore(
+                const key = await PrivateKey.fromKeystore(
                     state.keyFile as Uint8Array,
                     pwState.password
                 );
@@ -351,7 +351,7 @@ export default defineComponent({
 
             const { Mnemonic } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
-            const mnemonic = new Mnemonic(accessByPhraseState.words);
+            const mnemonic = await Mnemonic.fromWords(accessByPhraseState.words);
             await addKeysFromSeed(mnemonic, accessByPhraseState.password);
 
             Vue.nextTick(() => {
@@ -365,8 +365,8 @@ export default defineComponent({
         async function handleAccessByPrivateKeySubmit(): Promise<void> {
             state.modalAccessByPrivateKeyState.isBusy = true;
 
-            const { Ed25519PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-            const key = Ed25519PrivateKey.fromString(state.modalAccessByPrivateKeyState.rawPrivateKey);
+            const { PrivateKey } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+            const key = PrivateKey.fromString(state.modalAccessByPrivateKeyState.rawPrivateKey);
             await addKeysFromSeed(key);
 
             Vue.nextTick(() => {
@@ -376,12 +376,12 @@ export default defineComponent({
             });
         }
 
-        async function handleLoginError(error: Error): Promise<void> {
-            const { HederaStatusError, HederaPrecheckStatusError } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+        async function handleLoginError(error: { status: { code: number }; name: string; message: string; stack: any }): Promise<void> {
+            const { PrecheckStatusError, ReceiptStatusError } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
             if (
-                error instanceof HederaStatusError ||
-                    error instanceof HederaPrecheckStatusError
+                error instanceof PrecheckStatusError ||
+                    error instanceof ReceiptStatusError
             ) {
                 if (error.message.includes(
                     context.root.$t("common.error.unhandled").toString()

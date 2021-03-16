@@ -129,7 +129,7 @@ declare const ETHEREUM_BRIDGE_TOPIC_ID: string;
 
 function getAccountFromString(accountString: string): AccountId {
     const parts = accountString.split(".");
-    return new AccountId({ shard: parseInt(parts[ 0 ]), realm: parseInt(parts[ 1 ]), account: parseInt(parts[ 2 ]) });
+    return new AccountId({ shard: parseInt(parts[ 0 ]), realm: parseInt(parts[ 1 ]), num: parseInt(parts[ 2 ]) });
 }
 
 function constructMemo(address: string | null, txFee: string | null, gasPriceGwei: string | null): string {
@@ -224,7 +224,7 @@ export default defineComponent({
             () => state.account,
             (newValue: AccountId | null) => {
                 if (newValue) {
-                    state.accountString = `${newValue.shard}.${newValue.realm}.${newValue.account}`;
+                    state.accountString = `${newValue.shard}.${newValue.realm}.${newValue.num}`;
                 }
             }
         );
@@ -425,9 +425,9 @@ export default defineComponent({
             // eslint-disable-next-line require-atomic-updates
             state.amountErrorMessage = "";
 
-            const { HederaStatusError, Status } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+            const { ReceiptStatusError, PrecheckStatusError, Status } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
-            if (error instanceof HederaStatusError) {
+            if (error instanceof ReceiptStatusError || error instanceof PrecheckStatusError) {
                 const errorMessage = (await actions.handleHederaError({
                     error,
                     showAlert: false
@@ -435,11 +435,11 @@ export default defineComponent({
 
                 // Small duplication of effort to assign errorMessage to correct TextInput
                 switch (error.status.code) {
-                    case Status.InvalidAccountId.code:
-                    case Status.AccountRepeatedInAccountAmounts.code:
+                    case Status.InvalidAccountId._code:
+                    case Status.AccountRepeatedInAccountAmounts._code:
                         state.idErrorMessage = errorMessage;
                         break;
-                    case Status.InsufficientAccountBalance.code:
+                    case Status.InsufficientAccountBalance._code:
                         state.amountErrorMessage = errorMessage;
                         break;
                     default:
@@ -486,16 +486,16 @@ export default defineComponent({
                 }
 
                 const recipient: AccountId | null = state.account;
-                const { CryptoTransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+                const { TransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
                 const sendAmount = new Hbar(state.amount);
 
-                const tx = new CryptoTransferTransaction()
-                    .addSender(
+                const tx = new TransferTransaction()
+                    .addHbarTransfer(
                         getters.currentUser().session.account,
                         sendAmount
                     )
-                    .addRecipient(recipient, sendAmount)
-                    .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
+                    .addHbarTransfer(recipient, sendAmount)
+                    .setMaxTransactionFee(Hbar.fromTinybars(estimatedFeeTinybar.toNumber()));
 
                 state.memo = constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice);
 
@@ -509,11 +509,11 @@ export default defineComponent({
                 const receipt = await transactionIntermediate.getReceipt(client);
 
                 if (receipt != null) {
-                    const { shard, realm, account } = transactionIntermediate.accountId;
-                    const { seconds, nanos } = transactionIntermediate.validStart;
+                    const { shard, realm, num } = transactionIntermediate.transactionId.accountId;
+                    const { seconds, nanos } = transactionIntermediate.transactionId.validStart;
 
                     // build the transaction id from the data.
-                    state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
+                    state.transactionId = `${shard}.${realm}.${num}-${seconds}-${nanos}`;
 
                     const hexTransactionId = web3.utils.sha3(state.transactionId);
 

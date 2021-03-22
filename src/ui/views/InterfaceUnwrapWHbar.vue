@@ -257,7 +257,7 @@ export default defineComponent({
             }
 
             await initContracts();
-            web3.currentProvider.on("chainChanged", () => reloadWindow);
+            web3.currentProvider.on("chainChanged", reloadWindow);
             web3.currentProvider.on("accountsChanged", (accounts: string[]) => {
                 if (accounts.length === 0) {
                     reloadWindow();

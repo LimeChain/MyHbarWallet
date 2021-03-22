@@ -1,9 +1,21 @@
 <template>
     <InterfaceForm :title="$t('interfaceWrapHbar.title')">
+        <Select
+            v-model="state.asset"
+            class="select"
+            :options="availableAssets"
+            @change="handleSelectChange"
+        />
+        <div
+            v-if="state.assetSelectionError"
+            class="error"
+        >
+            {{ state.assetSelectionError }}
+        </div>
+
         <TextInput
             :value="state.amount"
             :error="state.amountErrorMessage"
-            :suffix="hbarSuffix"
             :valid="isAmountValid"
             has-input
             :label="$t('common.amount')"
@@ -13,7 +25,7 @@
 
         <TextInput
             :value="state.ethAddress"
-            :error="state.eth"
+            :error="state.ethAddressErrorMessage"
             :valid="isEthAddressValid"
             has-input
             :label="$t('common.ethAddress')"
@@ -26,7 +38,7 @@
         <template v-slot:footer>
             <Button
                 :busy="state.isBusy"
-                :disabled="!isEthAddressValid || !isAmountValid"
+                :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid"
                 :label="buttonLabel"
                 @click="handleShowSummary"
             />
@@ -59,6 +71,11 @@
         </ModalSuccess>
 
         <ModalFeeSummary
+            v-model="state.modalTokenTransferState"
+            @submit="handleTokenSubmit"
+        />
+
+        <ModalFeeSummary
             v-model="state.modalSummaryState"
             @submit="handleSendTransfer"
         />
@@ -68,7 +85,7 @@
 <script lang="ts">
 import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
-import { AccountId } from "@hashgraph/sdk";
+import { AccountId, TokenId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
 import { mdiHelpCircleOutline } from "@mdi/js";
 
@@ -77,7 +94,8 @@ import InterfaceForm from "../components/InterfaceForm.vue";
 import Button from "../components/Button.vue";
 import IDInput, { IdInputElement } from "../components/IDInput.vue";
 import { convert, getValueOfUnit, Unit } from "../../service/units";
-import ModalFeeSummary, { Item, State as ModalSummaryState } from "../components/ModalFeeSummary.vue";
+import ModalFeeSummary, { State as ModalSummaryState } from "../components/ModalFeeSummary.vue";
+import { Item } from "../components/ModalWrapSummaryItems.vue";
 import { formatHbar, validateHbar } from "../../service/format";
 import OptionalGasPriceField from "../components/OptionalGasPriceField.vue";
 import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
@@ -87,6 +105,10 @@ import { actions, getters } from "../store";
 import { txMetadata } from "../../service/hedera-validator";
 import { gasPriceOracle } from "../../service/etherscan";
 import Bridge from "../../contracts/bridge.json";
+import Select from "../components/Select.vue";
+import { Asset } from "../../domain/transfer";
+import { sendToken } from "../../service/hedera";
+
 let timeout: any = null;
 let web3: any;
 declare const window: any;
@@ -108,6 +130,7 @@ interface State {
     transactionId: string;
     modalSummaryState: ModalSummaryState;
     modalSuccessState: ModalSuccessState;
+    modalTokenTransferState: ModalSummaryState;
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
     gasPrice: string;
@@ -118,6 +141,8 @@ interface State {
     ethereumTransaction: any;
     showEthMessage: boolean;
     wrapAmount: string;
+    asset: string;
+    assetSelectionError: string;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -145,7 +170,8 @@ export default defineComponent({
         ModalFeeSummary,
         OptionalGasPriceField,
         IDInput,
-        Notice
+        Notice,
+        Select
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
@@ -172,6 +198,19 @@ export default defineComponent({
                 termsShowNonOperator: true,
                 isWrapSummary: true
             },
+            modalTokenTransferState: {
+                isOpen: false,
+                isBusy: false,
+                isFileSummary: false,
+                account: "",
+                amount: "",
+                items: [],
+                txType: "wrapToken",
+                submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
+                cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
+                termsShowNonOperator: true,
+                isWrapSummary: true
+            },
             modalSuccessState: {
                 isOpen: false,
                 hasAction: false
@@ -185,7 +224,9 @@ export default defineComponent({
             bridge: null,
             ethereumTransaction: null,
             showEthMessage: false,
-            wrapAmount: ""
+            wrapAmount: "",
+            asset: Asset.Hbar,
+            assetSelectionError: ""
         });
 
         onMounted(async() => {
@@ -194,6 +235,11 @@ export default defineComponent({
             state.gasPrice = gasPriceInfo.result.SafeGasPrice;
             const metadata = await txMetadata(state.gasPrice);
             state.txFee = new BigNumber(metadata.txFee).toString();
+            if (getters.currentUser() != null) {
+                if (getters.currentUserTokens() == null) {
+                    actions.refreshBalancesAndRate();
+                }
+            }
         });
 
         state.account = getAccountFromString(ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT);
@@ -206,6 +252,7 @@ export default defineComponent({
         }
 
         function handleEthAddressInput(value: string | null): void {
+            state.ethAddressErrorMessage = "";
             state.ethAddress = value;
         }
 
@@ -244,6 +291,8 @@ export default defineComponent({
             state.idValid = valid;
         }
 
+        const tokens = computed(() => getters.currentUserTokens() || []);
+
         const isAmountValid = computed(() => {
             if (state.amount) {
                 return (
@@ -280,11 +329,50 @@ export default defineComponent({
             return false;
         });
 
+        const scaleFactor = computed(() => {
+            const decimals = tokens.value!.filter(
+                (token) => token.tokenId.toString() === state.asset
+            )[ 0 ].decimals;
+
+            return new BigNumber(
+                Math.pow(10, decimals)
+            );
+        });
+
+        function validateTokenBalance(amount: BigNumber): boolean {
+            const adjustedAmount = amount.multipliedBy(scaleFactor.value);
+            if (tokens.value != null) {
+                return tokens.value.filter(
+                    (token) => token.tokenId.toString() === state.asset
+                )[ 0 ].balance.isGreaterThan(adjustedAmount);
+            }
+            return false;
+        }
+
         const amount = computed(() => {
             if (state.amount) {
                 return formatHbar(new BigNumber(state.amount));
             }
             return formatHbar(new BigNumber(0));
+        });
+
+        const isSelectedAssetValid = computed(() => {
+            if (state.assetSelectionError) {
+                return false;
+            }
+
+            return true;
+        });
+
+        // retrieve from smart contract
+        const bridgeTokens = computed(() => [ "0.0.453312", "0.0.453313" ]);
+
+        const availableAssets = computed(() => {
+            if (bridgeTokens.value.length > 0) {
+                return [ Asset.Hbar, ...bridgeTokens.value ];
+            }
+
+            return [ Asset.Hbar ];
         });
 
         const truncate = computed(() => amount.value && amount.value.length > 15 ?
@@ -307,6 +395,39 @@ export default defineComponent({
                 .toString();
         });
 
+        const isTokenAmountValid = computed(() => {
+            if (state.amount) {
+                const bigAmount = new BigNumber(state.amount);
+                return (
+                    !bigAmount.isNaN() &&
+                    bigAmount.isGreaterThan(new BigNumber(0)) &&
+                    validateTokenBalance(bigAmount)
+                );
+            }
+            return false;
+        });
+
+        function handleTokenAmount(amount: string): boolean {
+            state.amountErrorMessage = null;
+            state.amount = amount;
+
+            if (!isTokenAmountValid.value) {
+                if (state.amount === "") {
+                    state.amountErrorMessage = null;
+                } else if (
+                    // slight reproduction of effort
+                    new BigNumber(state.amount).isNaN() ||
+                    new BigNumber(state.amount).isLessThanOrEqualTo(new BigNumber(0))) {
+                    state.amountErrorMessage = context.root.$t("interfaceSendToken.invalidAmount").toString();
+                } else {
+                    state.amountErrorMessage = context.root.$t("interfaceSendToken.insufficientTokenBalance").toString();
+                }
+                return false;
+            }
+
+            return true;
+        }
+
         // Modal Fee Summary State
         const summaryAmount = computed(() => amount.value);
         const summaryAccount = computed(formatEthAddress);
@@ -316,24 +437,81 @@ export default defineComponent({
                 value:
                             isAmountValid && state.amount ?
                                 new BigNumber(state.amount) :
-                                new BigNumber(0)
+                                new BigNumber(0),
+                currency: "ℏ"
             },
             {
                 description: context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString(),
-                value: estimatedFeeHbar
+                value: estimatedFeeHbar,
+                currency: "ℏ"
             },
             {
                 description: context.root.$t("interfaceWrapHbar.ethereumNetworkFee").toString(),
                 value: isTxFeeValid && state.txFee ?
-                    new BigNumber(convert(state.txFee, Unit.Tinybar, Unit.Hbar, false)) : new BigNumber(0)
+                    new BigNumber(convert(state.txFee, Unit.Tinybar, Unit.Hbar, false)) : new BigNumber(0),
+                currency: "ℏ"
             },
             {
                 description: context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString(),
-                value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0)
+                value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0),
+                currency: "ℏ"
+            },
+            {
+                description: "Total Wrapped",
+                value: state.wrapAmount,
+                currency: "WHBAR"
+            },
+            {
+                description: "Total",
+                value: isAmountValid && state.amount ?
+                    new BigNumber(state.amount).plus(estimatedFeeHbar) :
+                    new BigNumber(0),
+                currency: "ℏ"
+            }
+        ]);
+
+        const summaryTokenItems = computed((): Item[] => [
+            {
+                description: context.root.$t("interfaceSendTransfer.transferAmount").toString(),
+                value:
+                            isAmountValid && state.amount ?
+                                new BigNumber(state.amount) :
+                                new BigNumber(0),
+                currency: "TOKEN"
+            },
+            {
+                description: context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString(),
+                value: estimatedFeeHbar,
+                currency: "ℏ"
+            },
+            {
+                description: context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString(),
+                value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0),
+                currency: "TOKEN"
+            },
+            {
+                description: "Total Wrapped Tokens",
+                value: state.wrapAmount,
+                currency: "TOKEN"
+            },
+            {
+                description: "Total fee",
+                value: estimatedFeeHbar,
+                currency: "ℏ"
             }
         ]);
 
         async function handleShowSummary(): Promise<void> {
+            if (state.asset === Asset.Hbar) {
+                handleShowWrapHbarSummary();
+            } else {
+                handleShowWrapTokenSummary();
+            }
+        }
+
+        async function handleShowWrapHbarSummary(): Promise<void> {
+            // validate amount to user's balance
+
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
             const txFee = new BigNumber(convert(
                 state.txFee.toString(),
@@ -362,6 +540,26 @@ export default defineComponent({
             const items: readonly Item[] = summaryItems.value!;
             state.modalSummaryState.items = items;
             state.modalSummaryState.isOpen = true;
+        }
+
+        async function handleShowWrapTokenSummary(): Promise<void> {
+            if (!handleTokenAmount(state.amount!)) {
+                return;
+            }
+            console.log(state.amount);
+            const amountBn = new BigNumber(state.amount ? state.amount : 0);
+            const contractServiceFee = await state.bridge.methods.serviceFee().call();
+            const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
+            const wrapAmount = amountBn.minus(serviceFee);
+
+            state.wrapAmount = wrapAmount.toString();
+            state.serviceFee = serviceFee.toString();
+            console.log(constructMemo(state.ethAddress, "0", "0"));
+            state.modalTokenTransferState.account = summaryAccount.value!;
+            state.modalTokenTransferState.amount = summaryAmount.value!;
+            const items: readonly Item[] = summaryTokenItems.value!;
+            state.modalTokenTransferState.items = items;
+            state.modalTokenTransferState.isOpen = true;
         }
 
         function formatEthAddress(): string {
@@ -402,19 +600,19 @@ export default defineComponent({
             state.amount = value;
             state.amountErrorMessage = "";
 
-            const roundTrippedAmount = convert(
-                state.amount,
-                Unit.Hbar,
-                Unit.Tinybar,
-                false
-            );
+            // const roundTrippedAmount = convert(
+            //     state.amount,
+            //     Unit.Hbar,
+            //     Unit.Tinybar,
+            //     false
+            // );
 
-            state.amount = convert(
-                roundTrippedAmount,
-                Unit.Tinybar,
-                Unit.Hbar,
-                false
-            );
+            // state.amount = convert(
+            //     roundTrippedAmount,
+            //     Unit.Tinybar,
+            //     Unit.Hbar,
+            //     false
+            // );
 
             boundInput(event, value, state.amount);
         }
@@ -544,6 +742,67 @@ export default defineComponent({
             }
         }
 
+        function handleSelectChange(changedTo: string): void {
+            if (changedTo === Asset.Hbar) {
+                state.assetSelectionError = "";
+                return;
+            }
+
+            if (tokens.value.length === 0) {
+                state.assetSelectionError = "You are not associated to any tokens.";
+                return;
+            }
+
+            const tokenIds = tokens.value.map(({ tokenId }) => tokenId.toString());
+            if (!tokenIds.includes(changedTo)) {
+                state.assetSelectionError = `You need to associate to token ${changedTo}`;
+                return;
+            }
+
+            state.assetSelectionError = "";
+        }
+
+        async function handleTokenSubmit(): Promise<void> {
+            state.isBusy = true;
+            state.modalTokenTransferState.isBusy = true;
+
+            try {
+                // Hack, pass token decimals to store for retrieval by hardware wallet
+                // signing callbacks
+                // mutations.setCurrentTransferDecimals(
+                //     tokens.value!.filter(
+                //         (token) => token.tokenId.toString() === state.tokenSelected!
+                //     )[ 0 ].decimals
+                // );
+                const recipient: AccountId | null = state.account;
+                console.log(TokenId.fromString(state.asset));
+
+                await sendToken(
+                    TokenId.fromString(state.asset),
+                    recipient!,
+                    getters.currentUser().session.client as Client,
+                    new BigNumber(
+                        state.amount!
+                    ).multipliedBy(scaleFactor.value),
+                    constructMemo(state.ethAddress, "0", "0")
+                );
+
+                actions.alert({
+                    message: context.root.$t("interfaceSendToken.sentToken").toString(),
+                    level: "success"
+                });
+            } catch (error) {
+                const result = await actions.handleHederaError({ error, showAlert: false });
+                console.log(result);
+                state.ethAddressErrorMessage = result.message;
+                // state.accountError = result.message;
+            }
+
+            state.modalTokenTransferState.isBusy = false;
+            state.modalTokenTransferState.isOpen = false;
+            state.isBusy = false;
+        }
+
         async function handleModalSuccessDismiss(): Promise<void> {
             state.modalSuccessState.isOpen = false;
             state.isBusy = false;
@@ -580,7 +839,11 @@ export default defineComponent({
             isEthAddressValid,
             handleEthAddressInput,
             handleGasPriceInput,
-            mdiHelpCircleOutline
+            mdiHelpCircleOutline,
+            availableAssets,
+            handleSelectChange,
+            isSelectedAssetValid,
+            handleTokenSubmit
         };
     }
 });
@@ -589,5 +852,11 @@ export default defineComponent({
 .success > span:first-of-type {
     display: block;
     padding-block-end: 20px;
+}
+
+.error {
+    color: var(--color-lightish-red);
+    font-size: 14px;
+    margin: 7px 0 0 15px;
 }
 </style>

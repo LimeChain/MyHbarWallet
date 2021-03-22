@@ -28,11 +28,9 @@
 <script lang="ts">
 import { computed, defineComponent, PropType, Ref, SetupContext } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
-import { Hbar, HbarUnit } from "@hashgraph/sdk";
 
 import { formatRightPad, formatSplit } from "../../service/format";
 
-import { Item } from "./ModalFeeSummary.vue";
 import InfoButton from "./InfoButton.vue";
 
 let KEY = 0;
@@ -50,14 +48,10 @@ interface SplitItem {
     currency: string | null;
 }
 
-interface Amount {
-    int: string;
-    fraction: string | null;
-}
-
-interface CalculatedAmounts {
-    total: Amount;
-    wrap: Amount;
+export interface Item {
+    description: string;
+    value: BigNumber | import("@hashgraph/sdk").Hbar | string;
+    currency: string | null;
 }
 
 export default defineComponent({
@@ -65,61 +59,6 @@ export default defineComponent({
     props: { items: Array as PropType<Item[]> },
     components: { InfoButton },
     setup(props: { items: Item[] }, context: SetupContext) {
-        const calculateAmounts: Ref<CalculatedAmounts> = computed(() => {
-            let total = new BigNumber(0);
-            let wrapAmount = new BigNumber(0);
-
-            if (props.items != null) {
-                for (const item of props.items) {
-                    if (item.description === context.root.$t("interfaceSendTransfer.transferAmount").toString()) {
-                        if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
-                        }
-                        if (item.value instanceof BigNumber) {
-                            total = total.plus(item.value);
-                            wrapAmount = wrapAmount.plus(item.value);
-                        }
-                    } else if (item.description === context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString()) {
-                        if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
-                        }
-                        if (item.value instanceof BigNumber) {
-                            total = total.plus(item.value);
-                        }
-                    } else {
-                        if (item.value instanceof Hbar) {
-                            item.value = item.value.as(HbarUnit.Hbar);
-                        }
-                        if (item.value instanceof BigNumber) {
-                            wrapAmount = wrapAmount.minus(item.value);
-                        }
-                    }
-                }
-            }
-            const totalParts = formatSplit(total.toString());
-            const wrapParts = formatSplit(wrapAmount.toString());
-
-            const totalAmount: Amount = totalParts ? {
-                int: totalParts[ "int" ],
-                fraction: totalParts.fraction
-            } : {
-                int: "0",
-                fraction: "0"
-            };
-            const wrapAmounts: Amount = wrapParts ? {
-                int: wrapParts[ "int" ],
-                fraction: wrapParts.fraction
-            } : {
-                int: "0",
-                fraction: "0"
-            };
-
-            return {
-                total: totalAmount,
-                wrap: wrapAmounts
-            };
-        });
-
         const splitItems: Ref<readonly SplitItem[]> = computed(() => {
             // Track the long fraction part of a string
             let lengthLongestString = 0;
@@ -136,7 +75,7 @@ export default defineComponent({
                         int: null,
                         fraction: null,
                         value: item.value.toString(),
-                        currency: "ℏ"
+                        currency: item.currency ? item.currency : "ℏ"
                     };
                 }
 
@@ -151,30 +90,8 @@ export default defineComponent({
                     int: parts[ "int" ],
                     fraction: parts.fraction,
                     value: "",
-                    currency: "ℏ"
+                    currency: item.currency ? item.currency : "ℏ"
                 };
-            });
-
-            const computedTotal: Ref<CalculatedAmounts> = calculateAmounts; // Memoize above
-
-            // Push the the mint onto the item array
-            items.push({
-                key: nextItemKey(),
-                description: "Total Wrapped ℏ",
-                int: computedTotal.value.wrap[ "int" ],
-                fraction: computedTotal.value.wrap.fraction,
-                value: "",
-                currency: "WHBAR"
-            });
-
-            // Push the the total onto the item array
-            items.push({
-                key: nextItemKey(),
-                description: "Total",
-                int: computedTotal.value.total[ "int" ],
-                fraction: computedTotal.value.total.fraction,
-                value: "",
-                currency: "ℏ"
             });
 
             // Loop through all the items and right pad all the necessary ones
@@ -201,7 +118,6 @@ export default defineComponent({
 
         return {
             props,
-            calculateAmounts,
             splitItems
         };
     }

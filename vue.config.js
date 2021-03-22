@@ -36,7 +36,7 @@ const plugins = [
         ETHERSCAN_API_KEY: `"${process.env.ETHERSCAN_API_KEY || "Y2UTKP86K5EYBGZ64YIH6N3IBGNQAJ8M21"}"`,
         BRIDGE_CONTRACT_ADDRESS: `"${process.env.BRIDGE_CONTRACT_ADDRESS || "0x51D1C4E0Da85aa7Df80a6F0CA4033e92f5B1c9f6"}"`,
         WHBAR_CONTRACT_ADDRESS: `"${process.env.WHBAR_CONTRACT_ADDRESS || "0x60d76a531202dB9497317F77873A57A588Ff2F05"}"`,
-        VALIDATOR_METADATA_ENDPOINT: `"${process.env.VALIDATOR_METADATA_ENDPOINT || "http://localhost:5200/api/v1/metadata?gasPriceGwei="}"`,
+        VALIDATOR_ENDPOINT: `"${process.env.VALIDATOR_ENDPOINT || "http://localhost:5200/api/v1/"}"`,
         ETHERSCAN_GAS_PRICE_ENDPOINT: `"${process.env.ETHERSCAN_GAS_PRICE_ENDPOINT || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey="}"`,
         ETHERSCAN_TX_URL: `"${process.env.ETHERSCAN_TX_URL || "https://ropsten.etherscan.io/tx/"}"`,
         INFURA_API_URL: `"${process.env.INFURA_API_URL || "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9"}"`,

@@ -190,7 +190,7 @@
     "modalFeeSummaryTitle.downloadFile": "Downloading file: {0}",
     "modalFeeSummaryTitle.creatingAccountWithBalance": "Creating account with a balance of {0} ℏ",
     "modalFeeSummaryTitle.wrapHbar": "Transfer {0} ℏ to {1}",
-    "modalFeeSummaryTitle.wrapToken": "Transfer {0} tokens to {1}",
+    "modalFeeSummaryTitle.wrapToken": "Transfer {0} TOKEN-A to {1}",
     "modalFeeSummaryTitle.approveWHbar": "Approve {0} WHBAR to Bridge {1}",
     "modalFeeSummaryTitle.unwrapHbar": "Unwrap {0} WHBAR to account {1}",
     "modalFeeSummary.whatIsOperator": "The Hedera™ account that will pay the fees associated with this transaction",

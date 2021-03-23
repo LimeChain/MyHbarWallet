@@ -70,6 +70,12 @@
                     target="_blank"
                     >Ethereum Transaction</a>
                 </div>
+                <div v-if="state.hederaTransaction">
+                    <a
+                    :href="state.hederaTransaction"
+                    target="_blank"
+                    >Hedera Transaction</a>
+                </div>
             </div>
         </ModalSuccess>
 
@@ -104,7 +110,7 @@ import OptionalGasPriceField from "../components/OptionalGasPriceField.vue";
 import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
 import Notice from "../components/Notice.vue";
 import { LoginMethod } from "../../domain/wallets/wallet";
-import { actions, getters } from "../store";
+import { actions, getters, mutations } from "../store";
 import { txMetadata, txData } from "../../service/hedera-validator";
 import { gasPriceOracle } from "../../service/etherscan";
 import Bridge from "../../contracts/bridge.json";
@@ -120,6 +126,7 @@ declare const window: any;
 declare const BRIDGE_CONTRACT_ADDRESS: string;
 declare const ETHERSCAN_TX_URL: string;
 declare const INFURA_API_URL: string;
+declare const MIRROR_NODE_TX_URL: string;
 
 interface State {
     amount: string | null;
@@ -146,6 +153,7 @@ interface State {
     asset: string;
     assetSelectionError: string;
     transactionTransferData: any;
+    hederaTransaction: any;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -154,6 +162,8 @@ const estimatedFeeTinybar = estimatedFeeHbar.multipliedBy(getValueOfUnit(Unit.Hb
 // Defined in vue.config.js.
 declare const ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT: string;
 declare const ETHEREUM_BRIDGE_TOPIC_ID: string;
+declare const ETHEREUM_CHAIN_ID: string;
+declare const ETHEREUM_NETWORK: string;
 
 function getAccountFromString(accountString: string): AccountId {
     const parts = accountString.split(".");
@@ -229,7 +239,8 @@ export default defineComponent({
             wrapAmount: "",
             asset: Asset.Hbar,
             assetSelectionError: "",
-            transactionTransferData: null
+            transactionTransferData: null,
+            hederaTransaction: null
         });
 
         onMounted(async() => {
@@ -323,11 +334,12 @@ export default defineComponent({
 
         async function visualizeSuccessModal(hash: string): Promise<void> {
             state.ethereumTransaction = `${ETHERSCAN_TX_URL}${hash}`;
+            state.hederaTransaction = `${MIRROR_NODE_TX_URL}${state.transactionId}`;
 
-            await actions.refreshBalancesAndRate();
             state.modalTokenTransferState.isOpen = false;
             state.modalSuccessState.isOpen = true;
             state.isBusy = false;
+            await actions.refreshBalancesAndRate();
         }
 
         async function initWeb3(): Promise<void> {
@@ -348,7 +360,19 @@ export default defineComponent({
                 return;
             }
 
+            if (state.web3Provider.chainId !== ETHEREUM_CHAIN_ID) {
+                mutations.navigateToInterface();
+                console.error(context.root.$t("interfaceUnwrapWHBar.invalidChainId", { network: ETHEREUM_NETWORK }));
+                return;
+            }
+
             await initContracts();
+            web3.currentProvider.on("chainChanged", reloadWindow);
+            web3.currentProvider.on("accountsChanged", (accounts: string[]) => {
+                if (accounts.length === 0) {
+                    reloadWindow();
+                }
+            });
         }
 
         async function initContracts(): Promise<void> {
@@ -434,7 +458,7 @@ export default defineComponent({
         });
 
         // retrieve from smart contract
-        const bridgeTokens = computed(() => [ "0.0.453312", "0.0.453313" ]);
+        const bridgeTokens = computed(() => [ "0.0.57016", "0.0.57017" ]);
 
         const availableAssets = computed(() => {
             if (bridgeTokens.value.length > 0) {
@@ -891,16 +915,18 @@ export default defineComponent({
                 }
 
                 const recipient: AccountId | null = state.account;
-                const { CryptoTransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-                const sendAmount = new Hbar(state.amount);
+                const tokenId: TokenId = TokenId.fromString(state.asset);
+                const amount = new BigNumber(state.amount!).multipliedBy(10 ** 8);
 
-                const tx = new CryptoTransferTransaction()
-                    .addSender(
-                        getters.currentUser().session.account,
-                        sendAmount
-                    )
-                    .addRecipient(recipient, sendAmount)
-                    .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
+                const { TokenTransferTransaction } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+                const tx = new TokenTransferTransaction()
+                    .addRecipient(tokenId, recipient, amount)
+                    .addSender(tokenId, client._getOperatorAccountId()!, amount);
+
+                actions.alert({
+                    message: context.root.$t("interfaceSendToken.sentToken").toString(),
+                    level: "success"
+                });
 
                 state.memo = constructMemo(state.ethAddress, "0", "0");
 
@@ -943,6 +969,7 @@ export default defineComponent({
             state.txFee = new BigNumber(metadata.txFee).toString();
             state.serviceFee = "";
             state.ethereumTransaction = null;
+            state.hederaTransaction = null;
         }
 
         return {
@@ -974,6 +1001,10 @@ export default defineComponent({
         };
     }
 });
+
+function reloadWindow(): void {
+    window.location.reload();
+}
 </script>
 <style lang="postcss" scoped>
 .success > span:first-of-type {

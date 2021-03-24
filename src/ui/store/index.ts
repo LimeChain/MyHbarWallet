@@ -8,7 +8,7 @@ import { Session, User } from "../../domain/user";
 import Wallet from "../../domain/wallets/wallet";
 import { Token } from "../../domain/token";
 import { currentPrice } from "../../service/coingecko";
-import { constructSession, getBalance, getTokens } from "../../service/hedera";
+import { constructSession, getBalance, getTokensInfo, getTokens } from "../../service/hedera";
 import { inUnitedStates } from "../../service/location";
 import i18n from "../../service/i18n";
 import router from "../router";
@@ -391,6 +391,15 @@ export const actions = {
         }
 
         mutations.setCurrentUserBalance(balance);
+    },
+
+    async getTokens(tokenIds: string[]): Promise<any> {
+        try {
+            return getTokensInfo(tokenIds, store.state.account.user?.session.client as Client);
+        } catch (error) {
+            this.handleHederaError({ error, showAlert: true });
+        }
+        return [];
     },
 
     async refreshTokens(): Promise<void> {

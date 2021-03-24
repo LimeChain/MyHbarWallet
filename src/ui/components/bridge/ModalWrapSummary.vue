@@ -15,7 +15,7 @@
             :state="termsState"
         />
         <div class="separator" />
-        <ModalFeeSummaryItems :items="state.items" />
+        <ModalWrapSummaryItems :items="state.items" />
         <div class="buttons">
             <Button
                 compact
@@ -42,13 +42,13 @@
 import { computed, defineComponent, PropType, SetupContext } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
 
-import { getters } from "../store";
+import { getters } from "../../store";
 
-import Button from "./Button.vue";
-import Modal from "./Modal.vue";
-import ModalFeeSummaryTitle from "./ModalFeeSummaryTitle.vue";
-import ModalFeeSummaryItems from "./ModalFeeSummaryItems.vue";
-import ModalFeeSummaryTerms from "./ModalFeeSummaryTerms.vue";
+import Button from "../Button.vue";
+import Modal from "../Modal.vue";
+import ModalFeeSummaryTitle from "../ModalFeeSummaryTitle.vue";
+import ModalFeeSummaryTerms from "../ModalFeeSummaryTerms.vue";
+import ModalWrapSummaryItems from "./ModalWrapSummaryItems.vue";
 
 export interface Item {
     description: string;
@@ -70,13 +70,13 @@ export interface State {
 }
 
 export default defineComponent({
-    name: "ModalFeeSummary",
+    name: "ModalWrapSummary",
     props: { state: Object as PropType<State> },
     components: {
         Button,
         Modal,
         ModalFeeSummaryTitle,
-        ModalFeeSummaryItems,
+        ModalWrapSummaryItems,
         ModalFeeSummaryTerms
     },
     model: {

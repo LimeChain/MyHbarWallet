@@ -89,25 +89,25 @@ import { AccountId, TokenId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
 import { mdiHelpCircleOutline } from "@mdi/js";
 
-import TextInput from "../components/TextInput.vue";
-import InterfaceForm from "../components/InterfaceForm.vue";
-import Button from "../components/Button.vue";
-import IDInput, { IdInputElement } from "../components/IDInput.vue";
-import { convert, getValueOfUnit, Unit } from "../../service/units";
-import ModalFeeSummary, { State as ModalSummaryState } from "../components/ModalFeeSummary.vue";
-import { Item } from "../components/ModalWrapSummaryItems.vue";
-import { formatHbar, validateHbar } from "../../service/format";
-import OptionalGasPriceField from "../components/OptionalGasPriceField.vue";
-import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
-import Notice from "../components/Notice.vue";
-import { LoginMethod } from "../../domain/wallets/wallet";
-import { actions, getters } from "../store";
-import { txMetadata } from "../../service/hedera-validator";
-import { gasPriceOracle } from "../../service/etherscan";
-import Bridge from "../../contracts/bridge.json";
-import Select from "../components/Select.vue";
-import { Asset } from "../../domain/transfer";
-import { sendToken } from "../../service/hedera";
+import TextInput from "../../components/TextInput.vue";
+import InterfaceForm from "../../components/InterfaceForm.vue";
+import Button from "../../components/Button.vue";
+import IDInput, { IdInputElement } from "../../components/IDInput.vue";
+import { convert, getValueOfUnit, Unit } from "../../../service/units";
+import ModalFeeSummary, { State as ModalSummaryState } from "../../components/bridge/ModalWrapSummary.vue";
+import { Item } from "../../components/ModalWrapSummaryItems.vue";
+import { formatHbar, validateHbar } from "../../../service/format";
+import OptionalGasPriceField from "../../components/OptionalGasPriceField.vue";
+import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
+import Notice from "../../components/Notice.vue";
+import { LoginMethod } from "../../../domain/wallets/wallet";
+import { actions, getters } from "../../store";
+import { txMetadata } from "../../../service/hedera-validator";
+import { gasPriceOracle } from "../../../service/etherscan";
+import Bridge from "../../../contracts/bridge.json";
+import Select from "../../components/Select.vue";
+import { Asset } from "../../../domain/transfer";
+import { sendToken } from "../../../service/hedera";
 
 let timeout: any = null;
 let web3: any;
@@ -195,8 +195,7 @@ export default defineComponent({
                 txType: "wrapHbar",
                 submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true,
-                isWrapSummary: true
+                termsShowNonOperator: true
             },
             modalTokenTransferState: {
                 isOpen: false,
@@ -208,8 +207,7 @@ export default defineComponent({
                 txType: "wrapToken",
                 submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true,
-                isWrapSummary: true
+                termsShowNonOperator: true
             },
             modalSuccessState: {
                 isOpen: false,

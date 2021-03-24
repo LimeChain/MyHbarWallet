@@ -50,13 +50,13 @@
 import { defineComponent, PropType, SetupContext } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
 
-import InfoButton from "./InfoButton.vue";
+import InfoButton from "../InfoButton.vue";
 
-import Button from "./Button.vue";
-import Modal from "./Modal.vue";
-import ModalFeeSummaryTitle from "./ModalFeeSummaryTitle.vue";
-import ModalFeeSummaryItems from "./ModalFeeSummaryItems.vue";
-import ModalFeeSummaryTerms from "./ModalFeeSummaryTerms.vue";
+import Button from "../Button.vue";
+import Modal from "../Modal.vue";
+import ModalFeeSummaryTitle from "../ModalFeeSummaryTitle.vue";
+import ModalFeeSummaryItems from "../ModalFeeSummaryItems.vue";
+import ModalFeeSummaryTerms from "../ModalFeeSummaryTerms.vue";
 import ModalUnwrapApproveSummaryItems from "./ModalUnwrapApproveSummaryItems.vue";
 import ModalUnwrapBurnSummaryItems from "./ModalUnwrapBurnSummaryItems.vue";
 

@@ -376,7 +376,7 @@ export default defineComponent({
         }
 
         async function initContracts(): Promise<void> {
-            state.bridge = await new web3.eth.Contract(Bridge.abi, "0x3df2Ce1cb4523d26f3dcB82A5265bdCb09c55acE");
+            state.bridge = await new web3.eth.Contract(Bridge.abi, "0x18DFeCf428B1fAE668f013B3c751CfBc9149cFBb");
             state.bridge.setProvider(state.web3Provider);
         }
 
@@ -458,7 +458,7 @@ export default defineComponent({
         });
 
         // retrieve from smart contract
-        const bridgeTokens = computed(() => [ "0.0.57016", "0.0.57017" ]);
+        const bridgeTokens = computed(() => [ "0.0.57016", "0.0.57017", "0.0.60631" ]);
 
         const availableAssets = computed(() => {
             if (bridgeTokens.value.length > 0) {

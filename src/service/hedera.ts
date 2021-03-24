@@ -134,27 +134,31 @@ interface TokensResult {
 
 export async function getTokenDecimals(keys: string[], testnet = false): Promise<Map<string, number>> {
     // /v1/token?q={"$or": [{"id": "0.0.253281"}, {"id": "0.0.253335"}]}
-    const queryList: Array<Record<string, string>> = [];
-    keys.forEach((key) => {
-        queryList.push({ id: key });
-    });
+    // const queryList: Array<Record<string, string>> = [];
+    // keys.forEach((key) => {
+    //     queryList.push({ id: key });
+    // });
 
     const results = new Map<string, number>();
-    const promises: Array<Promise<TokensResult>> = [];
-
-    let i = 0;
-    while (i * 50 < keys.length) {
-        const querySublist = queryList.slice(i * 50, (i + 1) * 50);
-        i += 1;
-
-        promises.push(kabutoRequest<TokensResult>(`v1/token?q={"$or": ${JSON.stringify(querySublist)}}`, testnet));
+    for (const key of keys) {
+        results.set(key, 8);
     }
 
-    (await Promise.all(promises)).forEach((tokensResult) => {
-        tokensResult.tokens.forEach((token) => {
-            results.set(token.id, token.decimals);
-        });
-    });
+    // const promises: Array<Promise<TokensResult>> = [];
+
+    // let i = 0;
+    // while (i * 50 < keys.length) {
+    //     const querySublist = queryList.slice(i * 50, (i + 1) * 50);
+    //     i += 1;
+
+    //     promises.push(kabutoRequest<TokensResult>(`v1/token?q={"$or": ${JSON.stringify(querySublist)}}`, testnet));
+    // }
+
+    // (await Promise.all(promises)).forEach((tokensResult) => {
+    //     tokensResult.tokens.forEach((token) => {
+    //         results.set(token.id, token.decimals);
+    //     });
+    // });
 
     return results;
 }

@@ -42,6 +42,11 @@
                 :label="buttonLabel"
                 @click="handleShowSummary"
             />
+            <Button
+                :busy="state.isBusy"
+                :label="buttonLabel"
+                @click="handleShowModalWrapTokens"
+            />
         </template>
 
         <ModalSuccess
@@ -79,6 +84,11 @@
             v-model="state.modalSummaryState"
             @submit="handleSendTransfer"
         />
+
+        <ModalWrapTokens
+            v-model="state.modalWrapTokensState"
+            @submit="handleSendTransfer"
+        />
     </InterfaceForm>
 </template>
 
@@ -108,6 +118,7 @@ import Bridge from "../../contracts/bridge.json";
 import Select from "../components/Select.vue";
 import { Asset } from "../../domain/transfer";
 import { sendToken } from "../../service/hedera";
+import ModalWrapTokens, { State as ModalWrapTokensState } from "../components/ModalWrapTokens.vue";
 
 let timeout: any = null;
 let web3: any;
@@ -131,6 +142,7 @@ interface State {
     modalSummaryState: ModalSummaryState;
     modalSuccessState: ModalSuccessState;
     modalTokenTransferState: ModalSummaryState;
+    modalWrapTokensState: ModalWrapTokensState;
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
     gasPrice: string;
@@ -168,6 +180,7 @@ export default defineComponent({
         Button,
         ModalSuccess,
         ModalFeeSummary,
+        ModalWrapTokens,
         OptionalGasPriceField,
         IDInput,
         Notice,
@@ -214,6 +227,10 @@ export default defineComponent({
             modalSuccessState: {
                 isOpen: false,
                 hasAction: false
+            },
+            modalWrapTokensState: {
+                isOpen: false,
+                isBusy: false
             },
             ethAddress: "",
             ethAddressErrorMessage: "",
@@ -562,6 +579,11 @@ export default defineComponent({
             state.modalTokenTransferState.isOpen = true;
         }
 
+        async function handleShowModalWrapTokens(): Promise<void> {
+            console.log("button works");
+            state.modalWrapTokensState.isOpen = true;
+        }
+
         function formatEthAddress(): string {
             return `${state.ethAddress?.substr(0, 6)}...${state.ethAddress?.substr(state.ethAddress.length - 6)}`;
         }
@@ -832,6 +854,7 @@ export default defineComponent({
             handleShowSummary,
             handleSendTransfer,
             handleModalSuccessDismiss,
+            handleShowModalWrapTokens,
             truncate,
             handleInput,
             handleValid,

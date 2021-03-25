@@ -29,9 +29,9 @@
 import { computed, defineComponent, PropType, Ref, SetupContext } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
 
-import { formatRightPad, formatSplit } from "../../service/format";
+import { formatRightPad, formatSplit } from "../../../service/format";
 
-import InfoButton from "./InfoButton.vue";
+import InfoButton from "../InfoButton.vue";
 
 let KEY = 0;
 function nextItemKey(): number {

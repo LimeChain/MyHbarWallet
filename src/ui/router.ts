@@ -51,19 +51,19 @@ typeof import("./views/InterfaceSendTransfer.vue")
 }
 
 function InterfaceWrapHbar(): Promise<
-typeof import("./views/InterfaceWrapHbar.vue")
+typeof import("./views/bridge/InterfaceWrapHbar.vue")
 > {
     return import(
         /* webpackChunkName: "interface" */
-        "./views/InterfaceWrapHbar.vue");
+        "./views/bridge/InterfaceWrapHbar.vue");
 }
 
 function InterfaceUnwrapWHbar(): Promise<
-typeof import("./views/InterfaceUnwrapWHbar.vue")
+typeof import("./views/bridge/InterfaceUnwrapWHbar.vue")
 > {
     return import(
         /* webpackChunkName: "interface" */
-        "./views/InterfaceUnwrapWHbar.vue");
+        "./views/bridge/InterfaceUnwrapWHbar.vue");
 }
 
 function InterfaceDeployContract(): Promise<

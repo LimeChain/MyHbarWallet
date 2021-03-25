@@ -99,25 +99,26 @@ import { AccountId, TokenId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
 import { mdiHelpCircleOutline } from "@mdi/js";
 
-import TextInput from "../components/TextInput.vue";
-import InterfaceForm from "../components/InterfaceForm.vue";
-import Button from "../components/Button.vue";
-import IDInput, { IdInputElement } from "../components/IDInput.vue";
-import { convert, getValueOfUnit, Unit } from "../../service/units";
-import ModalFeeSummary, { State as ModalSummaryState } from "../components/ModalFeeSummary.vue";
-import { Item } from "../components/ModalWrapSummaryItems.vue";
-import { formatHbar, validateHbar } from "../../service/format";
-import OptionalGasPriceField from "../components/OptionalGasPriceField.vue";
-import ModalSuccess, { State as ModalSuccessState } from "../components/ModalSuccess.vue";
-import Notice from "../components/Notice.vue";
-import { LoginMethod } from "../../domain/wallets/wallet";
-import { actions, getters } from "../store";
-import { txMetadata } from "../../service/hedera-validator";
-import { gasPriceOracle } from "../../service/etherscan";
-import Bridge from "../../contracts/bridge.json";
-import Select from "../components/Select.vue";
-import { Asset } from "../../domain/transfer";
-import { sendToken } from "../../service/hedera";
+import TextInput from "../../components/TextInput.vue";
+import InterfaceForm from "../../components/InterfaceForm.vue";
+import Button from "../../components/Button.vue";
+import IDInput, { IdInputElement } from "../../components/IDInput.vue";
+import { convert, getValueOfUnit, Unit } from "../../../service/units";
+import ModalFeeSummary, { State as ModalSummaryState } from "../../components/bridge/ModalWrapSummary.vue";
+import { Item } from "../../components/bridge/ModalWrapSummaryItems.vue";
+import { formatHbar, validateHbar } from "../../../service/format";
+import OptionalGasPriceField from "../../components/OptionalGasPriceField.vue";
+import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
+import Notice from "../../components/Notice.vue";
+import { LoginMethod } from "../../../domain/wallets/wallet";
+import { actions, getters } from "../../store";
+import { txMetadata } from "../../../service/hedera-validator";
+import { gasPriceOracle } from "../../../service/etherscan";
+import Bridge from "../../../contracts/bridge.json";
+import Select from "../../components/Select.vue";
+import { Asset } from "../../../domain/transfer";
+import { sendToken } from "../../../service/hedera";
+import { Token } from "src/domain/token";
 import ModalWrapTokens, { State as ModalWrapTokensState } from "../components/ModalWrapTokens.vue";
 
 let timeout: any = null;
@@ -155,6 +156,7 @@ interface State {
     wrapAmount: string;
     asset: string;
     assetSelectionError: string;
+    bridgeTokens: Map<string, Token> | null;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -208,8 +210,7 @@ export default defineComponent({
                 txType: "wrapHbar",
                 submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true,
-                isWrapSummary: true
+                termsShowNonOperator: true
             },
             modalTokenTransferState: {
                 isOpen: false,
@@ -221,8 +222,7 @@ export default defineComponent({
                 txType: "wrapToken",
                 submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
                 cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true,
-                isWrapSummary: true
+                termsShowNonOperator: true
             },
             modalSuccessState: {
                 isOpen: false,
@@ -243,10 +243,12 @@ export default defineComponent({
             showEthMessage: false,
             wrapAmount: "",
             asset: Asset.Hbar,
-            assetSelectionError: ""
+            assetSelectionError: "",
+            bridgeTokens: null
         });
 
         onMounted(async() => {
+            await getBridgeTokens();
             await initWeb3();
             const gasPriceInfo = await gasPriceOracle();
             state.gasPrice = gasPriceInfo.result.SafeGasPrice;
@@ -282,6 +284,19 @@ export default defineComponent({
                     state.txFee = new BigNumber(metadata.txFee).toString();
                 }
             }, 300);
+        }
+
+        async function getBridgeTokens(): Promise<void> {
+            // retrieve from contract
+            const tokenIds = [ "0.0.57016" ];
+            const tokens = await actions.getTokens(tokenIds);
+            const symbolToToken = new Map<string, Token>();
+
+            for (const token of tokens) {
+                symbolToToken.set(token.symbol, token);
+            }
+
+            state.bridgeTokens = symbolToToken;
         }
 
         watch(
@@ -348,7 +363,7 @@ export default defineComponent({
 
         const scaleFactor = computed(() => {
             const decimals = tokens.value!.filter(
-                (token) => token.tokenId.toString() === state.asset
+                (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.tokenId.toString()
             )[ 0 ].decimals;
 
             return new BigNumber(
@@ -360,7 +375,7 @@ export default defineComponent({
             const adjustedAmount = amount.multipliedBy(scaleFactor.value);
             if (tokens.value != null) {
                 return tokens.value.filter(
-                    (token) => token.tokenId.toString() === state.asset
+                    (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.tokenId.toString()
                 )[ 0 ].balance.isGreaterThan(adjustedAmount);
             }
             return false;
@@ -381,8 +396,12 @@ export default defineComponent({
             return true;
         });
 
-        // retrieve from smart contract
-        const bridgeTokens = computed(() => [ "0.0.453312", "0.0.453313" ]);
+        const bridgeTokens = computed(() => {
+            if (state.bridgeTokens) {
+                return [ ...state.bridgeTokens.keys() ];
+            }
+            return [];
+        });
 
         const availableAssets = computed(() => {
             if (bridgeTokens.value.length > 0) {
@@ -494,7 +513,7 @@ export default defineComponent({
                             isAmountValid && state.amount ?
                                 new BigNumber(state.amount) :
                                 new BigNumber(0),
-                currency: "TOKEN"
+                currency: state.asset
             },
             {
                 description: context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString(),
@@ -504,12 +523,12 @@ export default defineComponent({
             {
                 description: context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString(),
                 value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0),
-                currency: "TOKEN"
+                currency: state.asset
             },
             {
                 description: "Total Wrapped Tokens",
                 value: state.wrapAmount,
-                currency: "TOKEN"
+                currency: state.asset
             },
             {
                 description: "Total fee",
@@ -770,13 +789,19 @@ export default defineComponent({
                 return;
             }
 
+            const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId.toString();
+            if (!tokenId) {
+                state.assetSelectionError = "Ethereum Token not found";
+                return;
+            }
+
             if (tokens.value.length === 0) {
                 state.assetSelectionError = "You are not associated to any tokens.";
                 return;
             }
 
             const tokenIds = tokens.value.map(({ tokenId }) => tokenId.toString());
-            if (!tokenIds.includes(changedTo)) {
+            if (!tokenIds.includes(tokenId)) {
                 state.assetSelectionError = `You need to associate to token ${changedTo}`;
                 return;
             }
@@ -797,10 +822,10 @@ export default defineComponent({
                 //     )[ 0 ].decimals
                 // );
                 const recipient: AccountId | null = state.account;
-                console.log(TokenId.fromString(state.asset));
+                const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId;
 
                 await sendToken(
-                    TokenId.fromString(state.asset),
+                    tokenId!,
                     recipient!,
                     getters.currentUser().session.client as Client,
                     new BigNumber(

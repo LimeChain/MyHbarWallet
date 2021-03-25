@@ -127,6 +127,7 @@ export async function getBalance(
 interface token {
     id: string;
     decimals: number;
+    symbol: string;
 }
 interface TokensResult {
     tokens: token[];
@@ -173,18 +174,46 @@ export async function getTokens(
 
         const keys = [ ...tokenBalances.keys() ];
         const balances = [ ...tokenBalances.values() ];
-        const decimals: Map<string, number> = await getTokenDecimals(keys.map((key) => key.toString()), testnet ?? false);
+        // const decimals: Map<string, number> = await getTokenDecimals(keys.map((key) => key.toString()), testnet ?? false);
+        const tokenInfos = await getTokensInfo(keys.map((key) => key.toString()), client);
 
         const tokens: Token[] = [];
+        // for (const [ i, element ] of keys.entries()) {
+        //     tokens.push({
+        //         tokenId: element,
+        //         balance: balances[ i ],
+        //         decimals: decimals.get(element.toString())!
+        //     });
+        // }
+
         for (const [ i, element ] of keys.entries()) {
             tokens.push({
                 tokenId: element,
                 balance: balances[ i ],
-                decimals: decimals.get(element.toString())!
+                decimals: tokenInfos[ i ].decimals,
+                symbol: tokenInfos[ i ].symbol
             });
         }
 
         return tokens;
+    } catch (error) {
+        throw error;
+    }
+}
+
+export async function getTokensInfo(tokenIds: string[], client: Client): Promise<any> {
+    const { TokenInfoQuery, TokenId } = await import("@hashgraph/sdk");
+    try {
+        const promises = [];
+        for (const id of tokenIds) {
+            const tokenId = TokenId.fromString(id);
+            promises.push(
+                new TokenInfoQuery()
+                    .setTokenId(tokenId)
+                    .execute(client));
+        }
+
+        return Promise.all(promises);
     } catch (error) {
         throw error;
     }

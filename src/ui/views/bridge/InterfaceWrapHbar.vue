@@ -1,5 +1,10 @@
 <template>
+    <div id="wrapHbar">
     <InterfaceForm :title="$t('interfaceWrapHbar.title')">
+        <span class="connect-wallet-bar">
+            <ConnectWalletButton />
+        </span>
+        <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
         <Select
             v-model="state.asset"
             class="select"
@@ -14,16 +19,6 @@
         </div>
 
         <TextInput
-            :value="state.amount"
-            :error="state.amountErrorMessage"
-            :valid="isAmountValid"
-            has-input
-            :label="$t('common.amount')"
-            show-validation
-            @input="handleInput"
-        />
-
-        <TextInput
             :value="state.ethAddress"
             :error="state.ethAddressErrorMessage"
             :valid="isEthAddressValid"
@@ -31,6 +26,21 @@
             :label="$t('common.ethAddress')"
             show-validation
             @input="handleEthAddressInput"
+        />
+        <div class="balance-container">
+            <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
+            <span class="balance-value">1111</span>
+        </div>
+
+        <TextInput
+            :value="state.amount"
+            :error="state.amountErrorMessage"
+            :valid="isAmountValid"
+            has-input
+            :label="$t('common.amount')"
+            show-validation
+            @input="handleInput"
+            :suffix="state.asset"
         />
 
         <OptionalGasPriceField :value="state.gasPrice" @input="handleGasPriceInput" />
@@ -90,6 +100,7 @@
             @submit="handleSendTransfer"
         />
     </InterfaceForm>
+    </div>
 </template>
 
 <script lang="ts">
@@ -119,7 +130,10 @@ import Select from "../../components/Select.vue";
 import { Asset } from "../../../domain/transfer";
 import { sendToken } from "../../../service/hedera";
 import { Token } from "src/domain/token";
-import ModalWrapTokens, { State as ModalWrapTokensState } from "../components/ModalWrapTokens.vue";
+import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components/bridge/ModalWrapTokens.vue";
+import RadioButton from "../../components/RadioButton.vue";
+import RadioButtonGroup from "../../components/RadioButtonGroup.vue";
+import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 
 let timeout: any = null;
 let web3: any;
@@ -177,6 +191,9 @@ function constructMemo(address: string | null, txFee: string | null, gasPriceGwe
 
 export default defineComponent({
     components: {
+        ConnectWalletButton,
+        RadioButtonGroup,
+        RadioButton,
         TextInput,
         InterfaceForm,
         Button,
@@ -190,6 +207,17 @@ export default defineComponent({
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
+        const yesNoOptions = [
+            {
+                label: "Yes",
+                value: "Yes"
+            },
+            {
+                label: "No",
+                value: "No"
+            }
+        ];
+
         const state = reactive<State>({
             amount: "",
             account: null,
@@ -866,6 +894,7 @@ export default defineComponent({
         }
 
         return {
+            yesNoOptions,
             amount,
             state,
             summaryAmount,
@@ -897,6 +926,49 @@ export default defineComponent({
 });
 </script>
 <style lang="postcss" scoped>
+.label{
+    font-family: Montserrat;
+    font-style: normal;
+    font-weight: bold;
+    line-height: 15px;
+    display: inline-block;
+    font-size: 16px;
+    height: 24px;
+    padding: 0 8px;
+}
+
+.connect-wallet-bar{
+    text-align: right;
+}
+
+.balance-container{
+    text-align: right;
+}
+.label-small{
+    font-family: Montserrat;
+    font-style: normal;
+    font-size: 12px;
+    color: #828282;
+    margin: 3px;
+}
+
+.balance-value{
+    font-family: Montserrat;
+    font-style: normal;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 3px;
+}
+
+.submit-options{
+    display: inline-block;
+}
+
+.submit-options input{
+    margin: 3px;
+    background-color: #62C0AA;
+}
+
 .success > span:first-of-type {
     display: block;
     padding-block-end: 20px;
@@ -906,5 +978,44 @@ export default defineComponent({
     color: var(--color-lightish-red);
     font-size: 14px;
     margin: 7px 0 0 15px;
+}
+</style>
+
+<style lang="postcss">
+#wrapHbar .form-main{
+    grid-row-gap: 0;
+}
+
+#wrapHbar .select-value-container {
+    border: 1px solid #62c0aa;
+    border-radius: 10px;
+    box-sizing: border-box;
+    width: 145px;
+    margin-bottom: 13px;
+}
+
+#wrapHbar .select-value-container {
+    font-family: Montserrat;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: bold;
+    line-height: 17px;
+}
+
+#wrapHbar .select-option {
+    font-family: Montserrat;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: bold;
+    line-height: 17px;
+    width: 145px;
+}
+
+#wrapHbar .select-menu {
+    width: 145px;
+}
+
+#wrapHbar .icon {
+    color: #62c0aa;
 }
 </style>

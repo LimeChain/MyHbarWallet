@@ -46,8 +46,8 @@ import { getters } from "../../store";
 
 import Button from "../Button.vue";
 import Modal from "../Modal.vue";
-import ModalFeeSummaryTitle from "../ModalFeeSummaryTitle.vue";
-import ModalFeeSummaryTerms from "../ModalFeeSummaryTerms.vue";
+import ModalFeeSummaryTitle from "./ModalFeeSummaryTitle.vue";
+import ModalFeeSummaryTerms from "./ModalFeeSummaryTerms.vue";
 import ModalWrapSummaryItems from "./ModalWrapSummaryItems.vue";
 
 export interface Item {

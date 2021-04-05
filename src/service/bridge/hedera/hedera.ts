@@ -19,9 +19,9 @@ export async function hbarTransfer(
 export async function tokenTransfer(
     tokenId: TokenId,
     recipient: AccountId,
-    client: Client,
     amount: BigNumber,
-    memo: string
+    memo: string,
+    client: Client
 ): Promise<TransactionId> {
     const { TokenTransferTransaction } = await import("@hashgraph/sdk");
 

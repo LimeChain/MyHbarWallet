@@ -28,6 +28,8 @@
                 >
             </div>
             <div class="spacer" />
+            <div class="pending-transaction-button">
+            </div>
             <div class="links">
                 <router-link
                     v-if="!isInterface"

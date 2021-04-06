@@ -11,25 +11,32 @@
                 :account="state.account"
                 :type="state.txType"
             />
-            <Notice>Deposit 10Hbars for transfering to Ethereum</Notice>
+            <Notice>{{ state.noticeText }}</Notice>
+        <template>
+            <p class="fee-display">
+                <span class="fee-label">{{ $t("interfaceWrapHbar.hedera.fee") }}<InfoButton message="Test Message" /></span>
+                <span class="fee-value">0.1</span>
+            </p>
+        </template>
         <template v-if="state.step === 1">
             <div class="buttons-containter">
                 <Button
                     :busy="state.isBusy"
                     :disabled="false"
                     :compact="true"
-                    label="Deposit"
+                    :label="$t('interfaceWrapHbar.deposit')"
                     @click="handleDeposit"
                 />
                 <Button
-                    :busy="state.isBusy"
+                    :busy="state.claimBusy"
                     :compact="true"
                     :disabled="true"
-                    label="Claim"
+                    :label="$t('interfaceWrapHbar.claim')"
                     @click="handleClaim"
                 />
             </div>
         </template>
+
         <template v-if="state.step === 2">
             <div class="progress-bar">
                 <span v-bind:style="{ width: state.progress }"></span>
@@ -43,12 +50,12 @@
                 <div class="steps-display">
                     <span class="step-wrapper">
                         <span class="step1">1</span>
-                        <span class="step1-label">Deposit</span>
+                        <span class="step1-label">{{$t('interfaceWrapHbar.deposit')}}</span>
                     </span>
                     <span class="middle"></span>
                     <span class="step-wrapper">
                         <span class="step2 step-inactive">2</span>
-                        <span class="step2-label step-label-inactive">Claim</span>
+                        <span class="step2-label step-label-inactive">{{$t('interfaceWrapHbar.claim')}}</span>
                     </span>
                 </div>
             </div>
@@ -75,10 +82,6 @@ import Button from "../Button.vue";
 import Modal from "../Modal.vue";
 import Notice from "../Notice.vue";
 
-import ModalFeeSummaryTitle from "./ModalFeeSummaryTitle.vue";
-import ModalFeeSummaryItems from "./ModalFeeSummaryItems.vue";
-import ModalFeeSummaryTerms from "./ModalFeeSummaryTerms.vue";
-import ModalWrapSummaryItems from "./ModalWrapSummaryItems.vue";
 import TransferSummary from "./TransferSummary.vue";
 
 export interface State {
@@ -86,6 +89,9 @@ export interface State {
     isBusy: boolean;
     step: number;
     progress: string;
+    noticeText: string;
+    depositBusy: boolean;
+    claimBusy: boolean;
 }
 
 export default defineComponent({
@@ -95,26 +101,27 @@ export default defineComponent({
         TransferSummary,
         Button,
         Modal,
-        Notice,
-        ModalFeeSummaryTitle,
-        ModalFeeSummaryItems,
-        ModalWrapSummaryItems,
-        ModalFeeSummaryTerms
+        Notice
     },
     model: {
         prop: "state",
         event: "change"
     },
     setup(props, context: SetupContext): object {
+        props.state.noticeText = "Transfer hbar to ...";
+        props.state.depositBusy = false;
         function handleChange(): void {
             context.emit("change", { ...props.state, isOpen: false, isBusy: false });
         }
 
         function handleDeposit(): void {
-            props.state.step = 2;
+            props.state.isBusy = true;
+            props.state.depositBusy = true;
+            props.state.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit");
+            console.log("click");
         }
         function handleClaim(): void {
-            props.state.step = 1;
+            props.state.claimBusy = true;
         }
 
         async function setProgress(x: number): Promise<void> {
@@ -154,6 +161,28 @@ export default defineComponent({
     margin: 5%;
 }
 
+.fee-display{
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0;
+}
+
+.fee-display .fee-label{
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 17px;
+    color: #828282;
+    display: flex;
+    align-items: center;
+}
+
+.fee-display .fee-value{
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 17px;
+    color: #333333;
+}
+
 .steps-component{
     margin-left: 10px;
     margin-right: 10px;
@@ -162,7 +191,7 @@ export default defineComponent({
 .steps-display{
     display: flex;
     align-items: center;
-    width: 60%;
+    width: 70%;
     margin: auto;
 }
 
@@ -190,8 +219,6 @@ export default defineComponent({
 }
 
 .step1-label, .step2-label{
-    font-family: Montserrat;
-    font-style: normal;
     font-weight: bold;
     font-size: 14px;
     line-height: 17px;
@@ -238,13 +265,18 @@ export default defineComponent({
 .status-info > p{
     color: #62C0AA;
     text-align: center;
-    font-family: Montserrat;
     font-size: 12px;
 }
 
 </style>
 
 <style>
+
+#modal-wrap-tokens {
+    font-family: Montserrat;
+    font-style: normal;
+}
+
 #modal-wrap-tokens .notice{
     background: rgba(98, 192, 170, 0.1);
     border-radius: 5px;

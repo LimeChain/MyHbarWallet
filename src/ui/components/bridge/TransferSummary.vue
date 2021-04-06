@@ -1,25 +1,28 @@
 <template>
     <div id="transfer-summary">
-        <span class="title">Summary</span>
+        <span class="title">{{ $t("interfaceWrapHbar.summary") }}</span>
         <div class="separator" />
         <p class="row">
-            <span class="label">Asset<InfoButton message="Test Message" /></span>
+            <span class="label">{{ $t("interfaceWrapHbar.asset") }}<InfoButton message="Test Message" /></span>
             <span class="value">Hbar</span>
         </p>
         <p class="row">
-            <span class="label">Asset</span>
-            <span class="value">Hbar</span>
+            <span class="label">{{ $t("interfaceWrapHbar.receiver") }}</span>
+            <span class="value">Test</span>
         </p>
         <p class="row">
-            <span class="label">Asset</span>
-            <span class="value">Hbar</span>
+            <span class="label">{{ $t("common.amount") }}</span>
+            <span class="value">1000</span>
         </p>
         <p class="row">
-            <span class="label">Asset</span>
-            <span class="value">Hbar</span>
+            <span class="label">{{ $t("interfaceWrapHbar.service.fee") }}</span>
+            <span class="value">100</span>
         </p>
         <div class="separator" />
-        <p>Total to receive:</p>
+        <p class="row">
+            <span class="label">{{ $t("interfaceWrapHbar.totalToReceive") }}</span>
+            <span class="value">15</span>
+        </p>
     </div>
 </template>
 
@@ -57,8 +60,6 @@ export default defineComponent({
 
 <style lang="postcss" scoped>
 .title{
-    font-family: Montserrat;
-    font-style: normal;
     font-weight: bold;
     font-size: 18px;
     line-height: 22px;
@@ -71,8 +72,6 @@ export default defineComponent({
 }
 
 .row .label{
-    font-family: Montserrat;
-    font-style: normal;
     font-weight: 500;
     font-size: 14px;
     line-height: 17px;
@@ -82,8 +81,6 @@ export default defineComponent({
 }
 
 .row .value{
-    font-family: Montserrat;
-    font-style: normal;
     font-weight: bold;
     font-size: 14px;
     line-height: 17px;

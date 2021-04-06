@@ -1,6 +1,6 @@
 <template>
     <div id="wrapHbar">
-    <InterfaceForm :title="$t('interfaceWrapHbar.title')">
+    <InterfaceForm :title="$t('interfaceWrapHbar.title')" :description="$t('interfaceWrapHbar.description')">
         <span class="connect-wallet-bar">
             <ConnectWalletButton />
         </span>
@@ -27,6 +27,7 @@
             show-validation
             @input="handleEthAddressInput"
         />
+        <div>
         <div class="balance-container">
             <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
             <span class="balance-value">1111</span>
@@ -42,19 +43,18 @@
             @input="handleInput"
             :suffix="state.asset"
         />
-
-        <OptionalGasPriceField :value="state.gasPrice" @input="handleGasPriceInput" />
+        </div>
 
         <template v-slot:footer>
             <Button
                 :busy="state.isBusy"
                 :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid"
-                :label="buttonLabel"
+                :label="$t('interfaceWrapHbar.transferButton')"
                 @click="handleShowSummary"
             />
             <Button
                 :busy="state.isBusy"
-                :label="buttonLabel"
+                :label="$t('interfaceWrapHbar.transferButton')"
                 @click="handleShowModalWrapTokens"
             />
         </template>
@@ -64,36 +64,14 @@
             @dismiss="handleModalSuccessDismiss"
         >
             <div class="success">
-                <i18n path="modalSuccess.txId">
-                    <strong>{{ state.transactionId }}</strong>
-                </i18n>
-                <i18n path="modalSuccess.wrapHbar">
-                    <strong>{{ state.wrapAmount }}</strong>
-                    <strong>{{ state.ethAddress }}</strong>
-                </i18n>
-                <div class="empty">
-                    <Notice :symbol="mdiHelpCircleOutline" v-if="!state.showEthMessage">
-                        {{ $t('interfaceWrapHbar.wrapWaitEthTx') }}
-                    </Notice>
-                </div>
-                <div v-if="state.showEthMessage">
-                    <a
-                    :href="state.ethereumTransaction"
-                    target="_blank"
-                    >Ethereum Transaction</a>
+                <p>Transfered <strong>10 Hbars</strong> to <strong>0x000sdfa..</strong></p>
+                <div class="transactions-list">
+                    <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
+                    <a href="">{{$t("interfaceWrapHbar.deposit.transaction")}}</a><br>
+                    <a href="">{{$t("interfaceWrapHbar.claim.transaction")}}</a>
                 </div>
             </div>
         </ModalSuccess>
-
-        <ModalFeeSummary
-            v-model="state.modalTokenTransferState"
-            @submit="handleTokenSubmit"
-        />
-
-        <ModalFeeSummary
-            v-model="state.modalSummaryState"
-            @submit="handleSendTransfer"
-        />
 
         <ModalWrapTokens
             v-model="state.modalWrapTokensState"
@@ -115,10 +93,8 @@ import InterfaceForm from "../../components/InterfaceForm.vue";
 import Button from "../../components/Button.vue";
 import IDInput, { IdInputElement } from "../../components/IDInput.vue";
 import { convert, getValueOfUnit, Unit } from "../../../service/units";
-import ModalFeeSummary, { State as ModalSummaryState } from "../../components/bridge/ModalWrapSummary.vue";
 import { Item } from "../../components/bridge/ModalWrapSummaryItems.vue";
 import { formatHbar, validateHbar } from "../../../service/format";
-import OptionalGasPriceField from "../../components/OptionalGasPriceField.vue";
 import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
 import Notice from "../../components/Notice.vue";
 import { LoginMethod } from "../../../domain/wallets/wallet";
@@ -131,8 +107,6 @@ import { Asset } from "../../../domain/transfer";
 import { sendToken } from "../../../service/hedera";
 import { Token } from "src/domain/token";
 import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components/bridge/ModalWrapTokens.vue";
-import RadioButton from "../../components/RadioButton.vue";
-import RadioButtonGroup from "../../components/RadioButtonGroup.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 
 let timeout: any = null;
@@ -154,9 +128,7 @@ interface State {
     amountErrorMessage: string | null;
     idValid: boolean;
     transactionId: string;
-    modalSummaryState: ModalSummaryState;
     modalSuccessState: ModalSuccessState;
-    modalTokenTransferState: ModalSummaryState;
     modalWrapTokensState: ModalWrapTokensState;
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
@@ -192,32 +164,17 @@ function constructMemo(address: string | null, txFee: string | null, gasPriceGwe
 export default defineComponent({
     components: {
         ConnectWalletButton,
-        RadioButtonGroup,
-        RadioButton,
         TextInput,
         InterfaceForm,
         Button,
         ModalSuccess,
-        ModalFeeSummary,
         ModalWrapTokens,
-        OptionalGasPriceField,
         IDInput,
         Notice,
         Select
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
-        const yesNoOptions = [
-            {
-                label: "Yes",
-                value: "Yes"
-            },
-            {
-                label: "No",
-                value: "No"
-            }
-        ];
-
         const state = reactive<State>({
             amount: "",
             account: null,
@@ -225,33 +182,9 @@ export default defineComponent({
             memo: "",
             isBusy: false,
             idErrorMessage: "",
-            amountErrorMessage: "",
+            amountErrorMessage: "amount err",
             idValid: false,
             transactionId: "",
-            modalSummaryState: {
-                isOpen: false,
-                isBusy: false,
-                isFileSummary: false,
-                account: "",
-                amount: "",
-                items: [],
-                txType: "wrapHbar",
-                submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
-                cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true
-            },
-            modalTokenTransferState: {
-                isOpen: false,
-                isBusy: false,
-                isFileSummary: false,
-                account: "",
-                amount: "",
-                items: [],
-                txType: "wrapToken",
-                submitLabel: context.root.$t("interfaceSendTransfer.feeSummary.continue").toString(),
-                cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: true
-            },
             modalSuccessState: {
                 isOpen: false,
                 hasAction: false
@@ -261,7 +194,7 @@ export default defineComponent({
                 isBusy: false
             },
             ethAddress: "",
-            ethAddressErrorMessage: "",
+            ethAddressErrorMessage: "eth address err",
             gasPrice: "",
             txFee: "",
             serviceFee: "",
@@ -276,7 +209,7 @@ export default defineComponent({
         });
 
         onMounted(async() => {
-            await getBridgeTokens();
+            // await getBridgeTokens();
             await initWeb3();
             const gasPriceInfo = await gasPriceOracle();
             state.gasPrice = gasPriceInfo.result.SafeGasPrice;
@@ -443,21 +376,21 @@ export default defineComponent({
             `${amount.value.slice(0, 13)}...` :
             amount.value);
 
-        const buttonLabel = computed(() => {
-            let testAmount = 0;
-
-            if (state.amount != null) {
-                const amount = new BigNumber(state.amount);
-
-                if (amount.gt(1)) testAmount = 2;
-                else if (amount.lt(1)) testAmount = 0;
-                else testAmount = 1;
-            }
-
-            return context.root
-                .$tc("interfaceWrapHbar.wrapHbar", testAmount, { count: truncate.value })
-                .toString();
-        });
+        // const buttonLabel = computed(() => {
+        //     let testAmount = 0;
+        //
+        //     if (state.amount != null) {
+        //         const amount = new BigNumber(state.amount);
+        //
+        //         if (amount.gt(1)) testAmount = 2;
+        //         else if (amount.lt(1)) testAmount = 0;
+        //         else testAmount = 1;
+        //     }
+        //
+        //     return context.root
+        //         .$tc("interfaceWrapHbar.wrapHbar", testAmount, { count: truncate.value })
+        //         .toString();
+        // });
 
         const isTokenAmountValid = computed(() => {
             if (state.amount) {
@@ -492,7 +425,7 @@ export default defineComponent({
             return true;
         }
 
-        // Modal Fee Summary State
+        // Modal Fee Summary State TODO: Is this needed
         const summaryAmount = computed(() => amount.value);
         const summaryAccount = computed(formatEthAddress);
         const summaryItems = computed((): Item[] => [
@@ -534,6 +467,7 @@ export default defineComponent({
             }
         ]);
 
+        // TODOo: Is this needed
         const summaryTokenItems = computed((): Item[] => [
             {
                 description: context.root.$t("interfaceSendTransfer.transferAmount").toString(),
@@ -627,8 +561,8 @@ export default defineComponent({
         }
 
         async function handleShowModalWrapTokens(): Promise<void> {
-            console.log("button works");
             state.modalWrapTokensState.isOpen = true;
+            state.modalSuccessState.isOpen = true;
         }
 
         function formatEthAddress(): string {
@@ -894,13 +828,11 @@ export default defineComponent({
         }
 
         return {
-            yesNoOptions,
             amount,
             state,
             summaryAmount,
             summaryAccount,
             summaryItems,
-            buttonLabel,
             isAmountValid,
             hbarSuffix: Unit.Hbar,
             tinybarSuffix: Unit.Tinybar,
@@ -942,8 +874,12 @@ export default defineComponent({
 }
 
 .balance-container{
+    display:block;
+    position: relative;
+    top: 20px;
     text-align: right;
 }
+
 .label-small{
     font-family: Montserrat;
     font-style: normal;
@@ -972,6 +908,36 @@ export default defineComponent({
 .success > span:first-of-type {
     display: block;
     padding-block-end: 20px;
+}
+
+.success p{
+    font-family: Montserrat;
+    font-style: normal;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 17px;
+    text-align: center;
+    color: #828282;
+}
+
+.success strong{
+    color: black;
+}
+
+.success .transactions-list p{
+    color: #BDBDBD;
+    margin: 0;
+}
+.success .transactions-list a{
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 15px;
+    text-decoration-line: underline;
+    color: #62C0AA;
+}
+.success .transactions-list{
+    margin-top: 50px;
+    text-align: center;
 }
 
 .error {

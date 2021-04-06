@@ -7,12 +7,21 @@
 
 <script lang="ts">
 import Button from "../Button.vue";
+import { SetupContext } from "@vue/composition-api";
+
+function connect(): void{
+    let a = 4;
+    a = 3;
+}
 
 export default {
     name: "ConnectWalletButton",
     components: { Button },
-    props: {}
-
+    props: {},
+    setup(props, context: SetupContext): object {
+        let a = 4;
+        a = 3;
+    }
 };
 </script>
 

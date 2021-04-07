@@ -289,6 +289,7 @@
     "interfaceWrapHbar.receiver": "Receiver",
     "interfaceWrapHbar.service.fee": "Service Fee",
     "interfaceWrapHbar.hedera.fee": "Hedera network fee",
+    "interfaceWrapHbar.ethereum.fee": "Ethereum network fee",
     "interfaceWrapHbar.totalToReceive": "Total to receive:",
     "interfaceWrapToken.transferAmount": "Token Transfer Amount",
     "interfaceUnwrapWHbar.title": "Transfer to Hedera",

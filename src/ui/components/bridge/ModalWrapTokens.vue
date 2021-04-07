@@ -7,22 +7,30 @@
         @change="handleChange"
     >
             <TransferSummary
+                :asset="state.asset"
+                :receiver="state.receiver"
                 :amount="state.amount"
-                :account="state.account"
-                :type="state.txType"
+                :serviceFee="state.serviceFee"
+                :totalToReceive="state.totalToReceive"
             />
             <Notice>{{ state.noticeText }}</Notice>
-        <template>
+        <template v-if="!state.depositCompleted">
             <p class="fee-display">
                 <span class="fee-label">{{ $t("interfaceWrapHbar.hedera.fee") }}<InfoButton message="Test Message" /></span>
                 <span class="fee-value">0.1</span>
             </p>
         </template>
-        <template v-if="state.step === 1">
+        <template v-if="state.depositCompleted">
+            <p class="fee-display">
+                <span class="fee-label">{{ $t("interfaceWrapHbar.ethereum.fee") }}<InfoButton message="Test Message" /></span>
+                <span class="fee-value">0.5</span>
+            </p>
+        </template>
+        <template>
             <div class="buttons-containter">
                 <Button
-                    :busy="state.isBusy"
-                    :disabled="false"
+                    :busy="state.depositBusy"
+                    :disabled="state.depositDisabled"
                     :compact="true"
                     :label="$t('interfaceWrapHbar.deposit')"
                     @click="handleDeposit"
@@ -30,47 +38,28 @@
                 <Button
                     :busy="state.claimBusy"
                     :compact="true"
-                    :disabled="true"
+                    :disabled="state.claimDisabled"
                     :label="$t('interfaceWrapHbar.claim')"
                     @click="handleClaim"
                 />
             </div>
         </template>
 
-        <template v-if="state.step === 2">
-            <div class="progress-bar">
-                <span v-bind:style="{ width: state.progress }"></span>
-            </div>
-            <div class="status-info">
-                <p>Sending</p>
-            </div>
-        </template>
         <template>
             <div class="steps-component">
                 <div class="steps-display">
                     <span class="step-wrapper">
-                        <span class="step1">1</span>
-                        <span class="step1-label">{{$t('interfaceWrapHbar.deposit')}}</span>
+                        <span class="step1" v-bind:class="{ 'step-inactive': state.depositCompleted }">1</span>
+                        <span class="step1-label" v-bind:class="{ 'step-label-inactive': state.depositCompleted }">{{$t('interfaceWrapHbar.deposit')}}</span>
                     </span>
                     <span class="middle"></span>
                     <span class="step-wrapper">
-                        <span class="step2 step-inactive">2</span>
-                        <span class="step2-label step-label-inactive">{{$t('interfaceWrapHbar.claim')}}</span>
+                        <span class="step2" v-bind:class="{ 'step-inactive': !state.depositCompleted }">2</span>
+                        <span class="step2-label" v-bind:class="{ 'step-label-inactive': !state.depositCompleted }">{{$t('interfaceWrapHbar.claim')}}</span>
                     </span>
                 </div>
             </div>
         </template>
-
-        <!--
-        <template>
-            <div class="progress-bar">
-                <span v-bind:style="{ width: state.progress }"></span>
-            </div>
-            <div class="status-info">
-                <p>Sending</p>
-            </div>
-        </template>
-        -->
     </Modal>
     </div>
 </template>
@@ -81,17 +70,30 @@ import { computed, defineComponent, PropType, SetupContext } from "@vue/composit
 import Button from "../Button.vue";
 import Modal from "../Modal.vue";
 import Notice from "../Notice.vue";
+import InfoButton from "../InfoButton.vue";
 
 import TransferSummary from "./TransferSummary.vue";
 
 export interface State {
     isOpen: boolean;
     isBusy: boolean;
-    step: number;
-    progress: string;
     noticeText: string;
+    depositDisabled: boolean;
+    claimDisabled: boolean;
     depositBusy: boolean;
     claimBusy: boolean;
+    depositCompleted: boolean;
+    validatorsCount: number;
+    signaturesCount: number;
+    asset: string;
+    receiver: string;
+    amount: string;
+    serviceFee: string;
+    totalToReceive: string;
+    hederaNetworkFee: string;
+    ethereumNetworkFee: string;
+    hederaTransactionHash: string;
+    ethereumTransactionHash: string;
 }
 
 export default defineComponent({
@@ -101,44 +103,44 @@ export default defineComponent({
         TransferSummary,
         Button,
         Modal,
-        Notice
+        Notice,
+        InfoButton
     },
     model: {
         prop: "state",
         event: "change"
     },
     setup(props, context: SetupContext): object {
+        props.state.asset = "KK";
+        props.state.totalToReceive = "-3";
         props.state.noticeText = "Transfer hbar to ...";
         props.state.depositBusy = false;
+        props.state.claimBusy = false;
+        props.state.depositDisabled = false;
+        props.state.claimDisabled = true;
+
         function handleChange(): void {
             context.emit("change", { ...props.state, isOpen: false, isBusy: false });
         }
 
         function handleDeposit(): void {
-            props.state.isBusy = true;
-            props.state.depositBusy = true;
-            props.state.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit");
-            console.log("click");
+            // props.state.isBusy = true;
+            // props.state.depositBusy = true;
+            props.state.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
+            console.log("depositAsset");
+
+            // After success
+            props.state.depositDisabled = true;
+            props.state.claimDisabled = false;
+            props.state.depositCompleted = true;
         }
         function handleClaim(): void {
-            props.state.claimBusy = true;
+            console.log("claim");
+            // props.state.claimBusy = true;
+            props.state.claimDisabled = true;
+            props.state.depositDisabled = false;
+            props.state.depositCompleted = false;
         }
-
-        async function setProgress(x: number): Promise<void> {
-            let currentProgress = parseInt(props.state.progress);
-            if (x >= currentProgress) {
-                for (let i = currentProgress; i <= x; i += 1) {
-                    currentProgress++;
-                    props.state.progress = `${currentProgress}%`;
-                    await new Promise((resolve) => setTimeout(resolve, 200));
-                }
-            }
-        }
-
-        props.state.step = 1;
-        props.state.progress = "10%";
-
-        setProgress(80);
 
         return {
             props,
@@ -237,31 +239,6 @@ export default defineComponent({
     margin-bottom: 20px
 }
 
-.progress-bar {
-  height: 10px;
-  position: relative;
-  background: #F3F7FB;
-  border-radius: 5px;
-  padding: 1px;
-  box-shadow: inset 0 -1px 1px rgba(255, 255, 255, 0.3);
-  text-align: center;
-    margin-top: 30px;
-}
-.progress-bar > span {
-  display: block;
-  height: 100%;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
-  background-color: #62C0AA;
-  box-shadow:
-    inset 0 2px 9px  rgba(255,255,255,0.3),
-    inset 0 -2px 6px rgba(0,0,0,0.4);
-  position: relative;
-  overflow: hidden;
-}
-
 .status-info > p{
     color: #62C0AA;
     text-align: center;
@@ -289,6 +266,11 @@ export default defineComponent({
     font-size: 14px;
     line-height: 17px;
     color: #62C0AA;
+}
+
+#modal-wrap-tokens .icon{
+    width: 15px;
+    margin-left: 2px;
 }
 
 </style>

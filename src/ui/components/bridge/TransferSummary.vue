@@ -4,24 +4,24 @@
         <div class="separator" />
         <p class="row">
             <span class="label">{{ $t("interfaceWrapHbar.asset") }}<InfoButton message="Test Message" /></span>
-            <span class="value">Hbar</span>
+            <span class="value">{{ props.asset }}</span>
         </p>
         <p class="row">
             <span class="label">{{ $t("interfaceWrapHbar.receiver") }}</span>
-            <span class="value">Test</span>
+            <span class="value">{{ props.receiver }}</span>
         </p>
         <p class="row">
             <span class="label">{{ $t("common.amount") }}</span>
-            <span class="value">1000</span>
+            <span class="value">{{ props.amount }}</span>
         </p>
         <p class="row">
             <span class="label">{{ $t("interfaceWrapHbar.service.fee") }}</span>
-            <span class="value">100</span>
+            <span class="value">{{ props.serviceFee }}</span>
         </p>
         <div class="separator" />
         <p class="row">
             <span class="label">{{ $t("interfaceWrapHbar.totalToReceive") }}</span>
-            <span class="value">15</span>
+            <span class="value">{{ props.totalToReceive }}</span>
         </p>
     </div>
 </template>
@@ -30,29 +30,18 @@
 import { computed, defineComponent, PropType, SetupContext } from "@vue/composition-api";
 import InfoButton from "../InfoButton.vue";
 
-export interface State {
-    isOpen: boolean;
-    isBusy: boolean;
-    step: number;
-    progress: string;
-}
-
 export default defineComponent({
     name: "ModalWrapTokens",
-    props: { state: Object as PropType<State> },
     components: { InfoButton },
-    model: {
-        prop: "state",
-        event: "change"
+    props: {
+        asset: { type: String },
+        receiver: { type: String },
+        amount: { type: String },
+        serviceFee: { type: String },
+        totalToReceive: { type: String }
     },
     setup(props, context: SetupContext): object {
-        function handleChange(): void {
-            context.emit("change", { ...props.state, isOpen: false, isBusy: false });
-        }
-        return {
-            props,
-            handleChange
-        };
+        return { props };
     }
 });
 
@@ -98,5 +87,6 @@ export default defineComponent({
 <style>
 #transfer-summary .icon{
     width: 15px;
+    margin-left: 2px;
 }
 </style>

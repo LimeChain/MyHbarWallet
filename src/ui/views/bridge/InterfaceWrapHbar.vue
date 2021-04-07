@@ -30,7 +30,7 @@
         <div>
         <div class="balance-container">
             <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
-            <span class="balance-value">1111</span>
+            <span class="balance-value">{{ state.assetBalance }}</span>
         </div>
 
         <TextInput
@@ -86,6 +86,7 @@ import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext,
 import { BigNumber } from "bignumber.js";
 import { AccountId, TokenId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
+import { toAscii, fromAscii } from "web3-utils";
 import { mdiHelpCircleOutline } from "@mdi/js";
 
 import TextInput from "../../components/TextInput.vue";
@@ -93,6 +94,8 @@ import InterfaceForm from "../../components/InterfaceForm.vue";
 import Button from "../../components/Button.vue";
 import IDInput, { IdInputElement } from "../../components/IDInput.vue";
 import { convert, getValueOfUnit, Unit } from "../../../service/units";
+import { RouterService } from "../../../service/bridge/contracts/router/router";
+import { InfuraProviderService } from "../../../service/bridge/provider/infura-provider";
 import { Item } from "../../components/bridge/ModalWrapSummaryItems.vue";
 import { formatHbar, validateHbar } from "../../../service/format";
 import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
@@ -143,6 +146,10 @@ interface State {
     asset: string;
     assetSelectionError: string;
     bridgeTokens: Map<string, Token> | null;
+    providerService: InfuraProviderService | null;
+    routerService: RouterService | null;
+    contractTokensMap: Map<string, string> | null;
+    assetBalance: string;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -175,6 +182,7 @@ export default defineComponent({
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
+        const provider = InfuraProviderService.getInstance();
         const state = reactive<State>({
             amount: "",
             account: null,
@@ -191,7 +199,9 @@ export default defineComponent({
             },
             modalWrapTokensState: {
                 isOpen: false,
-                isBusy: false
+                isBusy: false,
+                step: 1,
+                progress: "10%"
             },
             ethAddress: "",
             ethAddressErrorMessage: "eth address err",
@@ -205,11 +215,17 @@ export default defineComponent({
             wrapAmount: "",
             asset: Asset.Hbar,
             assetSelectionError: "",
-            bridgeTokens: null
+            bridgeTokens: null,
+            providerService: null,
+            routerService: null,
+            contractTokensMap: null,
+            assetBalance: ""
         });
 
         onMounted(async() => {
-            // await getBridgeTokens();
+            state.providerService = InfuraProviderService.getInstance();
+            state.routerService = RouterService.getInstance(state.providerService.getProvider());
+            await getBridgeTokens();
             await initWeb3();
             const gasPriceInfo = await gasPriceOracle();
             state.gasPrice = gasPriceInfo.result.SafeGasPrice;
@@ -249,7 +265,9 @@ export default defineComponent({
 
         async function getBridgeTokens(): Promise<void> {
             // retrieve from contract
-            const tokenIds = [ "0.0.57016" ];
+            state.contractTokensMap = await state.routerService?.getTokens()!;
+            console.log(state.contractTokensMap);
+            const tokenIds = [ ...state.contractTokensMap.keys() ].filter((t) => t !== "HBAR");
             const tokens = await actions.getTokens(tokenIds);
             const symbolToToken = new Map<string, Token>();
 
@@ -276,7 +294,7 @@ export default defineComponent({
         }
 
         async function initContracts(): Promise<void> {
-            state.bridge = await new web3.eth.Contract(Bridge.abi, BRIDGE_CONTRACT_ADDRESS);
+            state.bridge = new web3.eth.Contract(Bridge.abi, BRIDGE_CONTRACT_ADDRESS);
             state.bridge.setProvider(state.web3Provider);
         }
 
@@ -368,7 +386,7 @@ export default defineComponent({
             if (bridgeTokens.value.length > 0) {
                 return [ Asset.Hbar, ...bridgeTokens.value ];
             }
-
+            state.assetBalance = getters.currentUserBalance()?.toString()!;
             return [ Asset.Hbar ];
         });
 
@@ -748,26 +766,32 @@ export default defineComponent({
         function handleSelectChange(changedTo: string): void {
             if (changedTo === Asset.Hbar) {
                 state.assetSelectionError = "";
+                state.assetBalance = getters.currentUserBalance()?.toString()!;
                 return;
             }
 
             const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId.toString();
             if (!tokenId) {
+                state.assetBalance = "";
                 state.assetSelectionError = "Ethereum Token not found";
                 return;
             }
 
             if (tokens.value.length === 0) {
+                state.assetBalance = "";
                 state.assetSelectionError = "You are not associated to any tokens.";
                 return;
             }
 
             const tokenIds = tokens.value.map(({ tokenId }) => tokenId.toString());
             if (!tokenIds.includes(tokenId)) {
+                state.assetBalance = "";
                 state.assetSelectionError = `You need to associate to token ${changedTo}`;
                 return;
             }
+            const token = tokens.value.find((t) => t.tokenId.toString() === tokenId);
 
+            state.assetBalance = token?.balance.div(10 ** token.decimals).toString()!;
             state.assetSelectionError = "";
         }
 

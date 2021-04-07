@@ -5,14 +5,15 @@ import { WebsocketProvider } from "web3-core";
 declare const INFURA_API_URL: string;
 
 export class InfuraProviderService {
+    private static instance: InfuraProviderService;
+
     private provider: WebsocketProvider;
 
-    constructor() {
+    public constructor() {
         this.provider = new Web3.providers.WebsocketProvider(INFURA_API_URL);
     }
 
-    private static instance: InfuraProviderService;
-    public static getInstance() {
+    public static getInstance(): InfuraProviderService {
         if (!InfuraProviderService.instance) {
             InfuraProviderService.instance = new InfuraProviderService();
         }
@@ -20,7 +21,7 @@ export class InfuraProviderService {
         return InfuraProviderService.instance;
     }
 
-    public getProvider() {
+    public getProvider(): WebsocketProvider {
         return this.provider;
     }
 }

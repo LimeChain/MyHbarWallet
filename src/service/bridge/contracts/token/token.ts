@@ -9,14 +9,15 @@ declare const ROUTER_CONTRACT_ADDRESS: string;
 
 // TokenService wraps a contract instance of the WrappedToken contract
 export class TokenService {
+    private static instance: TokenService;
+
     private contract: Contract;
 
     constructor(provider: Web3) {
         this.contract = new provider.eth.Contract(TokenABI, TOKEN_CONTRACT_ADDRESS);
     }
 
-    private static instance: TokenService;
-    public static getInstance(provider: Web3) {
+    public static getInstance(provider: Web3): TokenService {
         if (!TokenService.instance) {
             TokenService.instance = new TokenService(provider);
         }

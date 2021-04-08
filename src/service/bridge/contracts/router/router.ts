@@ -23,7 +23,6 @@ export class RouterService {
 
     public static getInstance(provider: WebsocketProvider): RouterService {
         if (!RouterService.instance) {
-            console.log(provider);
             RouterService.instance = new RouterService(provider);
         }
 

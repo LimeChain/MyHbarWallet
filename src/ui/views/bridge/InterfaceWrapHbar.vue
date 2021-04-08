@@ -2,7 +2,8 @@
     <div id="wrapHbar">
     <InterfaceForm :title="$t('interfaceWrapHbar.title')" :description="$t('interfaceWrapHbar.description')">
         <span class="connect-wallet-bar">
-            <ConnectWalletButton />
+            <ConnectWalletButton
+                @connect="handleConnectToMetamask" />
         </span>
         <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
         <Select
@@ -46,14 +47,15 @@
         </div>
 
         <template v-slot:footer>
-            <Button
+            <!-- <Button
                 :busy="state.isBusy"
                 :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid"
                 :label="$t('interfaceWrapHbar.transferButton')"
                 @click="handleShowSummary"
-            />
+            /> -->
             <Button
                 :busy="state.isBusy"
+                :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid || !isMetamaskConnected"
                 :label="$t('interfaceWrapHbar.transferButton')"
                 @click="handleShowModalWrapTokens"
             />
@@ -75,7 +77,8 @@
 
         <ModalWrapTokens
             v-model="state.modalWrapTokensState"
-            @submit="handleSendTransfer"
+            @deposit="handleDeposit"
+            @claim="handleClaim"
         />
     </InterfaceForm>
     </div>
@@ -86,7 +89,6 @@ import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext,
 import { BigNumber } from "bignumber.js";
 import { AccountId, TokenId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
-import { toAscii, fromAscii } from "web3-utils";
 import { mdiHelpCircleOutline } from "@mdi/js";
 
 import TextInput from "../../components/TextInput.vue";
@@ -96,6 +98,7 @@ import IDInput, { IdInputElement } from "../../components/IDInput.vue";
 import { convert, getValueOfUnit, Unit } from "../../../service/units";
 import { RouterService } from "../../../service/bridge/contracts/router/router";
 import { InfuraProviderService } from "../../../service/bridge/provider/infura-provider";
+import { MetamaskService } from "../../../service/bridge/metamask/metamask";
 import { Item } from "../../components/bridge/ModalWrapSummaryItems.vue";
 import { formatHbar, validateHbar } from "../../../service/format";
 import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
@@ -104,7 +107,6 @@ import { LoginMethod } from "../../../domain/wallets/wallet";
 import { actions, getters } from "../../store";
 import { txMetadata } from "../../../service/hedera-validator";
 import { gasPriceOracle } from "../../../service/etherscan";
-import Bridge from "../../../contracts/bridge.json";
 import Select from "../../components/Select.vue";
 import { Asset } from "../../../domain/transfer";
 import { sendToken } from "../../../service/hedera";
@@ -117,9 +119,7 @@ let web3: any;
 declare const window: any;
 
 // Defined in vue.config.js.
-declare const BRIDGE_CONTRACT_ADDRESS: string;
 declare const ETHERSCAN_TX_URL: string;
-declare const INFURA_API_URL: string;
 
 interface State {
     amount: string | null;
@@ -138,8 +138,6 @@ interface State {
     gasPrice: string;
     txFee: string;
     serviceFee: string;
-    web3Provider: any;
-    bridge: any;
     ethereumTransaction: any;
     showEthMessage: boolean;
     wrapAmount: string;
@@ -150,6 +148,7 @@ interface State {
     routerService: RouterService | null;
     contractTokensMap: Map<string, string> | null;
     assetBalance: string;
+    metamask: any;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -200,16 +199,25 @@ export default defineComponent({
             modalWrapTokensState: {
                 isOpen: false,
                 isBusy: false,
-                step: 1,
-                progress: "10%"
+                noticeText: "",
+                depositDisabled: false,
+                claimDisabled: true,
+                depositBusy: false,
+                claimBusy: false,
+                depositCompleted: false,
+                asset: "",
+                receiver: "",
+                amount: "",
+                serviceFee: "",
+                totalToReceive: "",
+                hederaNetworkFee: "0.1",
+                ethereumNetworkFee: ""
             },
             ethAddress: "",
             ethAddressErrorMessage: "eth address err",
             gasPrice: "",
             txFee: "",
             serviceFee: "",
-            web3Provider: null,
-            bridge: null,
             ethereumTransaction: null,
             showEthMessage: false,
             wrapAmount: "",
@@ -219,18 +227,18 @@ export default defineComponent({
             providerService: null,
             routerService: null,
             contractTokensMap: null,
-            assetBalance: ""
+            assetBalance: "",
+            metamask: null
         });
 
         onMounted(async() => {
             state.providerService = InfuraProviderService.getInstance();
             state.routerService = RouterService.getInstance(state.providerService.getProvider());
             await getBridgeTokens();
-            await initWeb3();
-            const gasPriceInfo = await gasPriceOracle();
-            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
-            const metadata = await txMetadata(state.gasPrice);
-            state.txFee = new BigNumber(metadata.txFee).toString();
+            // const gasPriceInfo = await gasPriceOracle();
+            // state.gasPrice = gasPriceInfo.result.SafeGasPrice;
+            // const metadata = await txMetadata(state.gasPrice);
+            // state.txFee = new BigNumber(metadata.txFee).toString();
             if (getters.currentUser() != null) {
                 if (getters.currentUserTokens() == null) {
                     actions.refreshBalancesAndRate();
@@ -287,17 +295,6 @@ export default defineComponent({
             }
         );
 
-        async function initWeb3(): Promise<void> {
-            state.web3Provider = new Web3.providers.WebsocketProvider(INFURA_API_URL);
-            web3 = new Web3(state.web3Provider);
-            await initContracts();
-        }
-
-        async function initContracts(): Promise<void> {
-            state.bridge = new web3.eth.Contract(Bridge.abi, BRIDGE_CONTRACT_ADDRESS);
-            state.bridge.setProvider(state.web3Provider);
-        }
-
         function handleValid(valid: boolean): void {
             state.idValid = valid;
         }
@@ -312,6 +309,8 @@ export default defineComponent({
             }
             return false;
         });
+
+        const isMetamaskConnected = computed(() => state.metamask);
 
         const isServiceFeeValid = computed(() => {
             if (state.serviceFee) {
@@ -422,6 +421,17 @@ export default defineComponent({
             return false;
         });
 
+        function handleHbarAmount(amount: string): boolean {
+            state.amountErrorMessage = null;
+            state.amount = amount;
+
+            return isAmountValid.value;
+        }
+
+        function handleAmount(amount: string): boolean {
+            return state.asset === Asset.Hbar ? handleHbarAmount(amount) : handleTokenAmount(amount);
+        }
+
         function handleTokenAmount(amount: string): boolean {
             state.amountErrorMessage = null;
             state.amount = amount;
@@ -445,7 +455,7 @@ export default defineComponent({
 
         // Modal Fee Summary State TODO: Is this needed
         const summaryAmount = computed(() => amount.value);
-        const summaryAccount = computed(formatEthAddress);
+        const summaryReceiver = computed(formatEthAddress);
         const summaryItems = computed((): Item[] => [
             {
                 description: context.root.$t("interfaceSendTransfer.transferAmount").toString(),
@@ -539,7 +549,7 @@ export default defineComponent({
                 state.amountErrorMessage = `Amount must be at least ${txFee} hbars`;
                 return;
             }
-            const contractServiceFee = await state.bridge.methods.serviceFee().call();
+            const contractServiceFee = await state.routerService?.serviceFee()!;
             const serviceFee = amountBn.minus(txFee).multipliedBy(contractServiceFee).dividedBy(100000);
             const wrapAmount = amountBn.minus(txFee).minus(serviceFee);
 
@@ -551,7 +561,7 @@ export default defineComponent({
             state.wrapAmount = wrapAmount.toString();
             state.serviceFee = serviceFee.toString();
             console.log(constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice));
-            state.modalSummaryState.account = summaryAccount.value!;
+            state.modalSummaryState.account = summaryReceiver.value!;
             state.modalSummaryState.amount = summaryAmount.value!;
             const items: readonly Item[] = summaryItems.value!;
             state.modalSummaryState.items = items;
@@ -564,14 +574,14 @@ export default defineComponent({
             }
             console.log(state.amount);
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
-            const contractServiceFee = await state.bridge.methods.serviceFee().call();
+            const contractServiceFee = await state.routerService?.serviceFee()!;
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
             const wrapAmount = amountBn.minus(serviceFee);
 
             state.wrapAmount = wrapAmount.toString();
             state.serviceFee = serviceFee.toString();
             console.log(constructMemo(state.ethAddress, "0", "0"));
-            state.modalTokenTransferState.account = summaryAccount.value!;
+            state.modalTokenTransferState.account = summaryReceiver.value!;
             state.modalTokenTransferState.amount = summaryAmount.value!;
             const items: readonly Item[] = summaryTokenItems.value!;
             state.modalTokenTransferState.items = items;
@@ -579,8 +589,21 @@ export default defineComponent({
         }
 
         async function handleShowModalWrapTokens(): Promise<void> {
+            if (!handleAmount(state.amount!)) {
+                return;
+            }
+            const contractServiceFee = await state.routerService?.serviceFee()!;
+            const amountBn = new BigNumber(state.amount ? state.amount : 0);
+            const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
+            const totalToReceive = amountBn.minus(serviceFee);
+
+            state.modalWrapTokensState.noticeText = `Deposit ${state?.amount} ${state.asset} for transferring to Ethereum`;
+            state.modalWrapTokensState.asset = state.asset;
+            state.modalWrapTokensState.receiver = summaryReceiver.value;
+            state.modalWrapTokensState.amount = state.amount?.toString()!;
+            state.modalWrapTokensState.serviceFee = serviceFee.toString();
+            state.modalWrapTokensState.totalToReceive = totalToReceive.toString();
             state.modalWrapTokensState.isOpen = true;
-            state.modalSuccessState.isOpen = true;
         }
 
         function formatEthAddress(): string {
@@ -735,16 +758,6 @@ export default defineComponent({
                     state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
 
                     const hexTransactionId = web3.utils.sha3(state.transactionId);
-
-                    state.bridge.once("Mint", { topics: [ null, null, hexTransactionId ]}, (error: any, result: any) => {
-                        if (error) {
-                            console.error(error);
-                            return;
-                        }
-
-                        state.ethereumTransaction = `${ETHERSCAN_TX_URL}${result.transactionHash}`;
-                        state.showEthMessage = true;
-                    });
                 }
 
                 // Refresh Balance
@@ -851,11 +864,34 @@ export default defineComponent({
             state.showEthMessage = false;
         }
 
+        function handleDeposit(): void {
+            state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
+            state.modalWrapTokensState.depositDisabled = true;
+            state.modalWrapTokensState.claimDisabled = false;
+            state.modalWrapTokensState.depositCompleted = true;
+        }
+
+        function handleClaim(): void {
+            // props.state.claimBusy = true;
+            state.modalWrapTokensState.claimDisabled = true;
+            state.modalWrapTokensState.depositDisabled = false;
+            state.modalWrapTokensState.depositCompleted = false;
+        }
+
+        async function handleConnectToMetamask(): Promise<void> {
+            if (state.metamask) {
+                return;
+            }
+            const metamask = new MetamaskService();
+            await metamask.initWeb3();
+            state.metamask = metamask;
+        }
+
         return {
             amount,
             state,
             summaryAmount,
-            summaryAccount,
+            summaryReceiver,
             summaryItems,
             isAmountValid,
             hbarSuffix: Unit.Hbar,
@@ -876,7 +912,11 @@ export default defineComponent({
             availableAssets,
             handleSelectChange,
             isSelectedAssetValid,
-            handleTokenSubmit
+            handleTokenSubmit,
+            handleDeposit,
+            handleClaim,
+            handleConnectToMetamask,
+            isMetamaskConnected
         };
     }
 });

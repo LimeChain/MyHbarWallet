@@ -2,27 +2,35 @@
     <Button
         :compact="true"
         label="Connect Wallet"
+        @click="connectToMetamask"
     />
 </template>
 
 <script lang="ts">
 import Button from "../Button.vue";
-import { SetupContext } from "@vue/composition-api";
+import { defineComponent, SetupContext, PropType } from "@vue/composition-api";
 
-function connect(): void{
-    let a = 4;
-    a = 3;
-}
+// export interface State {}
 
-export default {
+export default defineComponent({
     name: "ConnectWalletButton",
     components: { Button },
-    props: {},
+    props: { state: Object as PropType<{}> },
+    model: {
+        prop: "state",
+        event: "connect"
+    },
     setup(props, context: SetupContext): object {
-        let a = 4;
-        a = 3;
+        function connectToMetamask(): void {
+            context.emit("connect");
+        }
+
+        return {
+            props,
+            connectToMetamask
+        };
     }
-};
+});
 </script>
 
 <style scoped>

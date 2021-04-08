@@ -83,8 +83,6 @@ export interface State {
     depositBusy: boolean;
     claimBusy: boolean;
     depositCompleted: boolean;
-    validatorsCount: number;
-    signaturesCount: number;
     asset: string;
     receiver: string;
     amount: string;
@@ -92,8 +90,6 @@ export interface State {
     totalToReceive: string;
     hederaNetworkFee: string;
     ethereumNetworkFee: string;
-    hederaTransactionHash: string;
-    ethereumTransactionHash: string;
 }
 
 export default defineComponent({
@@ -111,35 +107,16 @@ export default defineComponent({
         event: "change"
     },
     setup(props, context: SetupContext): object {
-        props.state.asset = "KK";
-        props.state.totalToReceive = "-3";
-        props.state.noticeText = "Transfer hbar to ...";
-        props.state.depositBusy = false;
-        props.state.claimBusy = false;
-        props.state.depositDisabled = false;
-        props.state.claimDisabled = true;
-
         function handleChange(): void {
             context.emit("change", { ...props.state, isOpen: false, isBusy: false });
         }
 
         function handleDeposit(): void {
-            // props.state.isBusy = true;
-            // props.state.depositBusy = true;
-            props.state.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
             console.log("depositAsset");
-
-            // After success
-            props.state.depositDisabled = true;
-            props.state.claimDisabled = false;
-            props.state.depositCompleted = true;
+            context.emit("deposit");
         }
         function handleClaim(): void {
-            console.log("claim");
-            // props.state.claimBusy = true;
-            props.state.claimDisabled = true;
-            props.state.depositDisabled = false;
-            props.state.depositCompleted = false;
+            context.emit("claim");
         }
 
         return {

@@ -1,9 +1,12 @@
 import Web3 from "web3";
+import { BigNumber } from "bignumber.js";
+import { RouterABI } from "../contracts/abis";
 
 declare let window: any;
 
 declare const ETHEREUM_CHAIN_ID: string;
 declare const ETHEREUM_NETWORK: string;
+declare const ROUTER_CONTRACT_ADDRESS: string;
 
 function reloadWindow(): void {
     window.location.reload();
@@ -35,5 +38,16 @@ export class MetamaskService {
 
     public selectedAddress(): string {
         return this.metamaskProvider.selectedAddress;
+    }
+
+    public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: BigNumber, signatures: string[], handleSuccess: any, handleError: any): Promise<any> {
+        const options = { from: this.selectedAddress() };
+
+        const contract = new this.web3.eth.Contract(RouterABI, ROUTER_CONTRACT_ADDRESS);
+        return contract.methods
+            .mint(transactionId, wrappedToken, receiver, amount, signatures)
+            .send(options)
+            .on("transactionHash", handleSuccess)
+            .on("error", handleError);
     }
 }

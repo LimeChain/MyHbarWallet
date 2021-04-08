@@ -53,13 +53,6 @@ export class RouterService {
 
     // Write operations
 
-    // Executes Router's mint method
-    public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: BigNumber, signatures: string[], options: any = null): Promise<any> {
-        return this.contract.methods
-            .mint(transactionId, wrappedToken, receiver, amount, signatures)
-            .send(options);
-    }
-
     // Executes Router's burn method
     public async burn(amount: BigNumber, receiverAccount: string, wrappedToken: string, options: any = null): Promise<any> {
         return this.contract.methods

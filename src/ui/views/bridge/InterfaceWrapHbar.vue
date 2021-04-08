@@ -66,11 +66,11 @@
             @dismiss="handleModalSuccessDismiss"
         >
             <div class="success">
-                <p>Transfered <strong>10 Hbars</strong> to <strong>0x000sdfa..</strong></p>
+                <p>Transfered <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.ethAddress}}</strong></p>
                 <div class="transactions-list">
                     <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
-                    <a href="">{{$t("interfaceWrapHbar.deposit.transaction")}}</a><br>
-                    <a href="">{{$t("interfaceWrapHbar.claim.transaction")}}</a>
+                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.deposit.transaction")}}</a><br>
+                    <a :href="state.ethereumTransaction" target="_blank">{{$t("interfaceWrapHbar.claim.transaction")}}</a>
                 </div>
             </div>
         </ModalSuccess>
@@ -105,17 +105,18 @@ import ModalSuccess, { State as ModalSuccessState } from "../../components/Modal
 import Notice from "../../components/Notice.vue";
 import { LoginMethod } from "../../../domain/wallets/wallet";
 import { actions, getters } from "../../store";
-import { txMetadata } from "../../../service/hedera-validator";
+import { txMetadata, txData } from "../../../service/hedera-validator";
 import { gasPriceOracle } from "../../../service/etherscan";
 import Select from "../../components/Select.vue";
 import { Asset } from "../../../domain/transfer";
-import { sendToken } from "../../../service/hedera";
+import { tokenTransfer } from "../../../service/bridge/hedera/hedera";
 import { Token } from "src/domain/token";
 import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components/bridge/ModalWrapTokens.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 
 let timeout: any = null;
 let web3: any;
+let transactionInterval: any = null;
 declare const window: any;
 
 // Defined in vue.config.js.
@@ -148,7 +149,10 @@ interface State {
     routerService: RouterService | null;
     contractTokensMap: Map<string, string> | null;
     assetBalance: string;
-    metamask: any;
+    metamask: MetamaskService | null;
+    transactionData: any;
+    totalToReceive: string;
+    hederaExplorerTx: string;
 }
 
 const estimatedFeeHbar = new BigNumber(0.01);
@@ -157,6 +161,7 @@ const estimatedFeeTinybar = estimatedFeeHbar.multipliedBy(getValueOfUnit(Unit.Hb
 // Defined in vue.config.js.
 declare const ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT: string;
 declare const ETHEREUM_BRIDGE_TOPIC_ID: string;
+declare const MIRROR_NODE_TX_URL: string;
 
 function getAccountFromString(accountString: string): AccountId {
     const parts = accountString.split(".");
@@ -228,7 +233,10 @@ export default defineComponent({
             routerService: null,
             contractTokensMap: null,
             assetBalance: "",
-            metamask: null
+            metamask: null,
+            transactionData: null,
+            totalToReceive: "",
+            hederaExplorerTx: ""
         });
 
         onMounted(async() => {
@@ -393,22 +401,6 @@ export default defineComponent({
             `${amount.value.slice(0, 13)}...` :
             amount.value);
 
-        // const buttonLabel = computed(() => {
-        //     let testAmount = 0;
-        //
-        //     if (state.amount != null) {
-        //         const amount = new BigNumber(state.amount);
-        //
-        //         if (amount.gt(1)) testAmount = 2;
-        //         else if (amount.lt(1)) testAmount = 0;
-        //         else testAmount = 1;
-        //     }
-        //
-        //     return context.root
-        //         .$tc("interfaceWrapHbar.wrapHbar", testAmount, { count: truncate.value })
-        //         .toString();
-        // });
-
         const isTokenAmountValid = computed(() => {
             if (state.amount) {
                 const bigAmount = new BigNumber(state.amount);
@@ -495,99 +487,6 @@ export default defineComponent({
             }
         ]);
 
-        // TODOo: Is this needed
-        const summaryTokenItems = computed((): Item[] => [
-            {
-                description: context.root.$t("interfaceSendTransfer.transferAmount").toString(),
-                value:
-                            isAmountValid && state.amount ?
-                                new BigNumber(state.amount) :
-                                new BigNumber(0),
-                currency: state.asset
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString(),
-                value: estimatedFeeHbar,
-                currency: "ℏ"
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString(),
-                value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0),
-                currency: state.asset
-            },
-            {
-                description: "Total Wrapped Tokens",
-                value: state.wrapAmount,
-                currency: state.asset
-            },
-            {
-                description: "Total fee",
-                value: estimatedFeeHbar,
-                currency: "ℏ"
-            }
-        ]);
-
-        async function handleShowSummary(): Promise<void> {
-            if (state.asset === Asset.Hbar) {
-                handleShowWrapHbarSummary();
-            } else {
-                handleShowWrapTokenSummary();
-            }
-        }
-
-        async function handleShowWrapHbarSummary(): Promise<void> {
-            // validate amount to user's balance
-
-            const amountBn = new BigNumber(state.amount ? state.amount : 0);
-            const txFee = new BigNumber(convert(
-                state.txFee.toString(),
-                Unit.Tinybar,
-                Unit.Hbar,
-                false
-            ));
-            if (amountBn.lt(txFee)) {
-                state.amountErrorMessage = `Amount must be at least ${txFee} hbars`;
-                return;
-            }
-            const contractServiceFee = await state.routerService?.serviceFee()!;
-            const serviceFee = amountBn.minus(txFee).multipliedBy(contractServiceFee).dividedBy(100000);
-            const wrapAmount = amountBn.minus(txFee).minus(serviceFee);
-
-            if (wrapAmount.lte(0)) {
-                state.amountErrorMessage = `Amount must be at least ${txFee.plus(serviceFee)} hbars (includes bridge service fee)`;
-                return;
-            }
-
-            state.wrapAmount = wrapAmount.toString();
-            state.serviceFee = serviceFee.toString();
-            console.log(constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice));
-            state.modalSummaryState.account = summaryReceiver.value!;
-            state.modalSummaryState.amount = summaryAmount.value!;
-            const items: readonly Item[] = summaryItems.value!;
-            state.modalSummaryState.items = items;
-            state.modalSummaryState.isOpen = true;
-        }
-
-        async function handleShowWrapTokenSummary(): Promise<void> {
-            if (!handleTokenAmount(state.amount!)) {
-                return;
-            }
-            console.log(state.amount);
-            const amountBn = new BigNumber(state.amount ? state.amount : 0);
-            const contractServiceFee = await state.routerService?.serviceFee()!;
-            const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
-            const wrapAmount = amountBn.minus(serviceFee);
-
-            state.wrapAmount = wrapAmount.toString();
-            state.serviceFee = serviceFee.toString();
-            console.log(constructMemo(state.ethAddress, "0", "0"));
-            state.modalTokenTransferState.account = summaryReceiver.value!;
-            state.modalTokenTransferState.amount = summaryAmount.value!;
-            const items: readonly Item[] = summaryTokenItems.value!;
-            state.modalTokenTransferState.items = items;
-            state.modalTokenTransferState.isOpen = true;
-        }
-
         async function handleShowModalWrapTokens(): Promise<void> {
             if (!handleAmount(state.amount!)) {
                 return;
@@ -595,14 +494,14 @@ export default defineComponent({
             const contractServiceFee = await state.routerService?.serviceFee()!;
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
-            const totalToReceive = amountBn.minus(serviceFee);
+            state.totalToReceive = amountBn.minus(serviceFee).toString();
 
             state.modalWrapTokensState.noticeText = `Deposit ${state?.amount} ${state.asset} for transferring to Ethereum`;
             state.modalWrapTokensState.asset = state.asset;
             state.modalWrapTokensState.receiver = summaryReceiver.value;
             state.modalWrapTokensState.amount = state.amount?.toString()!;
             state.modalWrapTokensState.serviceFee = serviceFee.toString();
-            state.modalWrapTokensState.totalToReceive = totalToReceive.toString();
+            state.modalWrapTokensState.totalToReceive = state.totalToReceive;
             state.modalWrapTokensState.isOpen = true;
         }
 
@@ -708,74 +607,6 @@ export default defineComponent({
             }
         }
 
-        // eslint-disable-next-line sonarjs/cognitive-complexity
-        async function handleSendTransfer(): Promise<void> {
-            state.isBusy = true;
-            state.modalSummaryState.isBusy = true;
-            const client = getters.currentUser().session.client;
-
-            try {
-                if (state.account == null) {
-                    throw new Error(context.root
-                        .$t("common.error.nullAccountOnInterface")
-                        .toString());
-                }
-
-                if (state.amount == null) {
-                    throw new Error(context.root
-                        .$t("common.error.nullTransferAmount")
-                        .toString());
-                }
-
-                const recipient: AccountId | null = state.account;
-                const { CryptoTransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
-                const sendAmount = new Hbar(state.amount);
-
-                const tx = new CryptoTransferTransaction()
-                    .addSender(
-                        getters.currentUser().session.account,
-                        sendAmount
-                    )
-                    .addRecipient(recipient, sendAmount)
-                    .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
-
-                state.memo = constructMemo(state.ethAddress, state.txFee.toString(), state.gasPrice);
-
-                if (state.memo == null || state.memo === "") {
-                    state.memo = " "; // Hack for Nano X paging
-                }
-
-                tx.setTransactionMemo(state.memo);
-
-                const transactionIntermediate = await tx.execute(client);
-                const receipt = await transactionIntermediate.getReceipt(client);
-
-                if (receipt != null) {
-                    const { shard, realm, account } = transactionIntermediate.accountId;
-                    const { seconds, nanos } = transactionIntermediate.validStart;
-
-                    // build the transaction id from the data.
-                    state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
-
-                    const hexTransactionId = web3.utils.sha3(state.transactionId);
-                }
-
-                // Refresh Balance
-                await actions.refreshBalancesAndRate();
-
-                // eslint-disable-next-line require-atomic-updates
-                state.modalSummaryState.isOpen = false;
-                state.modalSuccessState.isOpen = true;
-            } catch (error) {
-                handleError(error);
-            } finally {
-                // eslint-disable-next-line require-atomic-updates
-                state.modalSummaryState.isBusy = false;
-                state.modalSummaryState.isOpen = false;
-                state.isBusy = false;
-            }
-        }
-
         function handleSelectChange(changedTo: string): void {
             if (changedTo === Asset.Hbar) {
                 state.assetSelectionError = "";
@@ -808,44 +639,48 @@ export default defineComponent({
             state.assetSelectionError = "";
         }
 
-        async function handleTokenSubmit(): Promise<void> {
-            state.isBusy = true;
-            state.modalTokenTransferState.isBusy = true;
+        async function handleTokenTransfer(): Promise<void> {
+            const recipient: AccountId | null = state.account;
+            const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId;
+            const client = getters.currentUser().session.client as Client;
 
-            try {
-                // Hack, pass token decimals to store for retrieval by hardware wallet
-                // signing callbacks
-                // mutations.setCurrentTransferDecimals(
-                //     tokens.value!.filter(
-                //         (token) => token.tokenId.toString() === state.tokenSelected!
-                //     )[ 0 ].decimals
-                // );
-                const recipient: AccountId | null = state.account;
-                const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId;
+            const transactionId = await tokenTransfer(
+                tokenId!,
+                recipient!,
+                new BigNumber(
+                    state.amount!
+                ).multipliedBy(scaleFactor.value),
+                constructMemo(state.ethAddress, "0", "0"),
+                client
+            );
 
-                await sendToken(
-                    tokenId!,
-                    recipient!,
-                    getters.currentUser().session.client as Client,
-                    new BigNumber(
-                        state.amount!
-                    ).multipliedBy(scaleFactor.value),
-                    constructMemo(state.ethAddress, "0", "0")
-                );
+            const receipt = await transactionId.getReceipt(client);
 
-                actions.alert({
-                    message: context.root.$t("interfaceSendToken.sentToken").toString(),
-                    level: "success"
-                });
-            } catch (error) {
-                const result = await actions.handleHederaError({ error, showAlert: false });
-                console.log(result);
-                state.ethAddressErrorMessage = result.message;
-                // state.accountError = result.message;
+            if (receipt != null) {
+                const { shard, realm, account } = transactionId.accountId;
+                const { seconds, nanos } = transactionId.validStart;
+
+                // build the transaction id from the data.
+                state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
+                handleValidatorTransactionData(state.transactionId);
             }
 
-            state.modalTokenTransferState.isBusy = false;
-            state.modalTokenTransferState.isOpen = false;
+            // Refresh Balance
+            await actions.refreshBalancesAndRate();
+
+            actions.alert({
+                message: context.root.$t("interfaceSendToken.sentToken").toString(),
+                level: "success"
+            });
+        }
+
+        async function visualizeSuccessModal(hash: string): Promise<void> {
+            state.hederaExplorerTx = `${MIRROR_NODE_TX_URL}${state.transactionId}`;
+            state.ethereumTransaction = `${ETHERSCAN_TX_URL}${hash}`;
+
+            await actions.refreshBalancesAndRate();
+            state.modalWrapTokensState.isOpen = false;
+            state.modalSuccessState.isOpen = true;
             state.isBusy = false;
         }
 
@@ -862,29 +697,150 @@ export default defineComponent({
             state.serviceFee = "";
             state.ethereumTransaction = null;
             state.showEthMessage = false;
+            state.asset = Asset.Hbar;
+            state.assetBalance = getters.currentUserBalance()?.toString()!;
+            state.modalWrapTokensState = {
+                isOpen: false,
+                isBusy: false,
+                noticeText: "",
+                depositDisabled: false,
+                claimDisabled: true,
+                depositBusy: false,
+                claimBusy: false,
+                depositCompleted: false,
+                asset: "",
+                receiver: "",
+                amount: "",
+                serviceFee: "",
+                totalToReceive: "",
+                hederaNetworkFee: "0.1",
+                ethereumNetworkFee: ""
+            };
         }
 
-        function handleDeposit(): void {
+        async function handleValidatorTransactionData(transactionId: string): Promise<void> {
+            clearInterval(transactionInterval);
+            transactionInterval = setInterval(async() => {
+                const transactionData = await txData(transactionId);
+                if (transactionData.majority === true) {
+                    state.transactionData = transactionData;
+                    state.modalWrapTokensState.noticeText = `Claim your ${state.totalToReceive} ${state.asset} on Ethereum`;
+                    state.modalWrapTokensState.depositBusy = false;
+                    state.modalWrapTokensState.depositDisabled = true;
+                    state.modalWrapTokensState.depositCompleted = true;
+                    state.modalWrapTokensState.claimDisabled = false;
+                    clearInterval(transactionInterval);
+                }
+            }, 5000);
+        }
+
+        async function mint(transactionId: string, transactionData: any): Promise<void> {
+            const bytesTransactionId = Web3.utils.fromAscii(transactionId);
+            const signatures = [];
+            for (const signature of transactionData.signatures) {
+                signatures.push(`0x${signature}`);
+            }
+            // const fromAddress = state.web3Provider.selectedAddress;
+            // const gasPrice = web3.utils.toWei(state.gasPrice, "gwei");
+
+            // const options = { from: fromAddress, gasPrice };
+
+            await state.metamask?.mint(bytesTransactionId,
+                    transactionData.wrappedToken,
+                    transactionData.recipient,
+                    transactionData.amount,
+                    signatures,
+                    visualizeSuccessModal,
+                    handleModalSuccessDismiss);
+        }
+
+        async function handleDeposit(): Promise<void> {
             state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
-            state.modalWrapTokensState.depositDisabled = true;
-            state.modalWrapTokensState.claimDisabled = false;
-            state.modalWrapTokensState.depositCompleted = true;
+            state.modalWrapTokensState.depositBusy = true;
+            try {
+                if (state.asset === Asset.Hbar) {
+                    await handleHbarTransfer();
+                } else {
+                    await handleTokenTransfer();
+                }
+            } catch (error) {
+                handleError(error);
+            } finally {
+                state.modalWrapTokensState.noticeText = "Waiting for confirmations...";
+            }
+        }
+
+        async function handleHbarTransfer(): Promise<void> {
+            const client = getters.currentUser().session.client;
+            if (state.account == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullAccountOnInterface")
+                    .toString());
+            }
+
+            if (state.amount == null) {
+                throw new Error(context.root
+                    .$t("common.error.nullTransferAmount")
+                    .toString());
+            }
+
+            const recipient: AccountId | null = state.account;
+            const { CryptoTransferTransaction, Hbar } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+            const sendAmount = new Hbar(state.amount);
+
+            const tx = new CryptoTransferTransaction()
+                .addSender(
+                    getters.currentUser().session.account,
+                    sendAmount
+                )
+                .addRecipient(recipient, sendAmount)
+                .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
+
+            state.memo = constructMemo(state.ethAddress, "0", "0");
+
+            if (state.memo == null || state.memo === "") {
+                state.memo = " "; // Hack for Nano X paging
+            }
+
+            tx.setTransactionMemo(state.memo);
+
+            const transactionIntermediate = await tx.execute(client);
+            const receipt = await transactionIntermediate.getReceipt(client);
+
+            if (receipt != null) {
+                const { shard, realm, account } = transactionIntermediate.accountId;
+                const { seconds, nanos } = transactionIntermediate.validStart;
+
+                // build the transaction id from the data.
+                state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
+                handleValidatorTransactionData(state.transactionId);
+            }
+
+            // Refresh Balance
+            await actions.refreshBalancesAndRate();
         }
 
         function handleClaim(): void {
             // props.state.claimBusy = true;
-            state.modalWrapTokensState.claimDisabled = true;
-            state.modalWrapTokensState.depositDisabled = false;
-            state.modalWrapTokensState.depositCompleted = false;
+            state.modalWrapTokensState.claimBusy = true;
+            mint(state.transactionId, state.transactionData);
         }
 
         async function handleConnectToMetamask(): Promise<void> {
             if (state.metamask) {
+                actions.alert({
+                    message: "Metamask already connected",
+                    level: "success"
+                });
                 return;
             }
             const metamask = new MetamaskService();
             await metamask.initWeb3();
             state.metamask = metamask;
+            actions.alert({
+                message: "Metamask successfully connected",
+                level: "success"
+            });
         }
 
         return {
@@ -897,8 +853,6 @@ export default defineComponent({
             hbarSuffix: Unit.Hbar,
             tinybarSuffix: Unit.Tinybar,
             idInput,
-            handleShowSummary,
-            handleSendTransfer,
             handleModalSuccessDismiss,
             handleShowModalWrapTokens,
             truncate,
@@ -912,7 +866,6 @@ export default defineComponent({
             availableAssets,
             handleSelectChange,
             isSelectedAssetValid,
-            handleTokenSubmit,
             handleDeposit,
             handleClaim,
             handleConnectToMetamask,

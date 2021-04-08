@@ -1,4 +1,4 @@
-import { AccountId, Client, TokenId, TransactionId, } from "@hashgraph/sdk";
+import { AccountId, Client, TokenId, TransactionId } from "@hashgraph/sdk";
 import BigNumber from "bignumber.js";
 
 export async function hbarTransfer(

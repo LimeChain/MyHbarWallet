@@ -114,11 +114,14 @@ export default defineComponent({
         }
 
         function handleDeposit(): void {
-            console.log("depositAsset");
-            context.emit("deposit");
+            if (!props.state?.depositBusy) {
+                context.emit("deposit");
+            }
         }
         function handleClaim(): void {
-            context.emit("claim");
+            if (!props.state?.claimBusy) {
+                context.emit("claim");
+            }
         }
 
         return {

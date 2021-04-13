@@ -44,14 +44,14 @@ export class MetamaskService {
         return `${this.metamaskProvider.selectedAddress?.substr(0, 6)}...${this.metamaskProvider.selectedAddress?.substr(this.metamaskProvider.selectedAddress.length - 6)}`;
     }
 
-    public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: BigNumber, signatures: string[], handleSuccess: any, handleError: any): Promise<any> {
+    public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: BigNumber, signatures: string[], handleReceipt: any, handleError: any): Promise<any> {
         const options = { from: this.selectedAddress() };
 
         const contract = new this.web3.eth.Contract(RouterABI, ROUTER_CONTRACT_ADDRESS);
         return contract.methods
             .mint(transactionId, wrappedToken, receiver, amount, signatures)
             .send(options)
-            .on("transactionHash", handleSuccess)
+            .on("receipt", handleReceipt)
             .on("error", handleError);
     }
 }

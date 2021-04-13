@@ -700,9 +700,9 @@ export default defineComponent({
             });
         }
 
-        async function visualizeSuccessModal(hash: string): Promise<void> {
+        async function visualizeSuccessModal(receipt: any): Promise<void> {
             state.hederaExplorerTx = `${MIRROR_NODE_TX_URL}${state.transactionId}`;
-            state.ethereumTransaction = `${ETHERSCAN_TX_URL}${hash}`;
+            state.ethereumTransaction = `${ETHERSCAN_TX_URL}${receipt.transactionHash}`;
 
             await actions.refreshBalancesAndRate();
             state.modalWrapTokensState.isOpen = false;
@@ -710,7 +710,12 @@ export default defineComponent({
             state.isBusy = false;
         }
 
-        async function handleModalSuccessDismiss(): Promise<void> {
+        async function handleModalSuccessDismiss(error: any, receipt: any): Promise<void> {
+            if (receipt) {
+                visualizeSuccessModal(receipt.transactionHash);
+                return;
+            }
+
             state.modalSuccessState.isOpen = false;
             state.isBusy = false;
             state.amount = "";
@@ -771,13 +776,17 @@ export default defineComponent({
 
             // const options = { from: fromAddress, gasPrice };
 
-            await state.metamask?.mint(bytesTransactionId,
+            try {
+                await state.metamask?.mint(bytesTransactionId,
                     transactionData.wrappedToken,
                     transactionData.recipient,
                     transactionData.amount,
                     signatures,
                     visualizeSuccessModal,
                     handleModalSuccessDismiss);
+            } catch (error) {
+                console.log(error);
+            }
         }
 
         async function handleDeposit(): Promise<void> {

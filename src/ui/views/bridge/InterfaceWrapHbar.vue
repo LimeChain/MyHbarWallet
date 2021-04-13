@@ -200,7 +200,6 @@ export default defineComponent({
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
-        console.log(process.env);
         const provider = InfuraProviderService.getInstance();
         const state = reactive<State>({
             amount: "",
@@ -298,7 +297,6 @@ export default defineComponent({
         async function getBridgeTokens(): Promise<void> {
             // retrieve from contract
             state.contractTokensMap = await state.routerService?.getTokens()!;
-            console.log(state.contractTokensMap);
             const tokenIds = [ ...state.contractTokensMap.keys() ].filter((t) => t !== "HBAR");
             const tokens = await actions.getTokens(tokenIds);
             const symbolToToken = new Map<string, Token>();

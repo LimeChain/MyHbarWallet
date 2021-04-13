@@ -36,11 +36,13 @@ import {LoginMethod} from "../wallets/Wallet";
                 :routes="toolsRoutes"
             />
 
+            <template v-if="bridgeActive">
             <InterfaceNavigationSection
                 :icon="mdiEthereum"
                 :title="$t('interfaceNavigation.hederaEthereumBridge')"
                 :routes="hederaEthereumBridgeRoutes"
             />
+            </template>
         </nav>
         <div
             :class="classObject"
@@ -59,6 +61,11 @@ import { mutations, store, getters } from "../store";
 
 import MaterialDesignIcon from "./MaterialDesignIcon.vue";
 import InterfaceNavigationSection from "./InterfaceNavigationSection.vue";
+import { NetworkName } from "../../domain/network";
+
+declare const BRIDGE_ACTIVE_ON_TESTNET: boolean;
+declare const BRIDGE_ACTIVE_ON_MAINNET: boolean;
+declare const BRIDGE_ACTIVE_ON_PREVIEWNET: boolean;
 
 function handleClick(): void {
     mutations.setInterfaceMenuIsOpen(false);
@@ -148,6 +155,18 @@ export default defineComponent({
             return "menu-closed";
         });
 
+        const bridgeActive = computed(() => {
+            const currentNetwork = getters.currentNetwork().name;
+            switch (currentNetwork) {
+                case NetworkName.TESTNET:
+                    return BRIDGE_ACTIVE_ON_TESTNET;
+                case NetworkName.PREVIEW:
+                    return BRIDGE_ACTIVE_ON_PREVIEWNET;
+                case NetworkName.MAINNET:
+                    return BRIDGE_ACTIVE_ON_MAINNET;
+            }
+        });
+
         return {
             notLedger,
             cryptoRoutes,
@@ -160,7 +179,8 @@ export default defineComponent({
             mdiCoins,
             mdiToolbox,
             mdiEthereum,
-            handleClick
+            handleClick,
+            bridgeActive
         };
     }
 });

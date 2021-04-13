@@ -44,6 +44,9 @@ const plugins = [
         ETHEREUM_CHAIN_ID: `"${process.env.ETHEREUM_CHAIN_ID || "0x3"}"`,
         ETHEREUM_NETWORK: `"${process.env.ETHEREUM_NETWORK || "Ropsten"}"`,
         MIRROR_NODE_TX_URL: `"${process.env.MIRROR_NODE_TX_URL || "http://previewnet.mirrornode.hedera.com/api/v1/transactions/"}"`,
+        BRIDGE_ACTIVE_ON_MAINNET: false,
+        BRIDGE_ACTIVE_ON_TESTNET: true,
+        BRIDGE_ACTIVE_ON_PREVIEWNET: false
     }),
     new StatsPlugin("stats.json")
 ];

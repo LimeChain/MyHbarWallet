@@ -31,22 +31,8 @@ const plugins = [
         IS_ELECTRON: is_electron,
         HEDERA_NETWORK: `"${process.env.HEDERA_NETWORK || "testnet"}"`,
         MOONPAY_API_KEY: `"${process.env.MOONPAY_API_KEY || "pk_test_ypQ0mhShRarhXwAbGvdLfxAL89AtfQ"}"`,
-        ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT: `"${process.env.ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT || "0.0.18745"}"`,
-        ETHEREUM_BRIDGE_TOPIC_ID: `"${process.env.ETHEREUM_BRIDGE_TOPIC_ID || "0.0.18744"}"`,
         ETHERSCAN_API_KEY: `"${process.env.ETHERSCAN_API_KEY || "Y2UTKP86K5EYBGZ64YIH6N3IBGNQAJ8M21"}"`,
-        BRIDGE_CONTRACT_ADDRESS: `"${process.env.BRIDGE_CONTRACT_ADDRESS || "0x51D1C4E0Da85aa7Df80a6F0CA4033e92f5B1c9f6"}"`,
-        WHBAR_CONTRACT_ADDRESS: `"${process.env.WHBAR_CONTRACT_ADDRESS || "0x60d76a531202dB9497317F77873A57A588Ff2F05"}"`,
-        ROUTER_CONTRACT_ADDRESS: `"${process.env.ROUTER_CONTRACT_ADDRESS || "0x2f6fC85D13907F94fD915eCfb5d48aB2a2a0BB70"}"`,
-        VALIDATOR_ENDPOINT: `"${process.env.VALIDATOR_ENDPOINT || "http://localhost:5200/api/v1/"}"`,
-        ETHERSCAN_GAS_PRICE_ENDPOINT: `"${process.env.ETHERSCAN_GAS_PRICE_ENDPOINT || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey="}"`,
-        ETHERSCAN_TX_URL: `"${process.env.ETHERSCAN_TX_URL || "https://ropsten.etherscan.io/tx/"}"`,
-        INFURA_API_URL: `"${process.env.INFURA_API_URL || "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9"}"`,
-        ETHEREUM_CHAIN_ID: `"${process.env.ETHEREUM_CHAIN_ID || "0x3"}"`,
-        ETHEREUM_NETWORK: `"${process.env.ETHEREUM_NETWORK || "Ropsten"}"`,
-        MIRROR_NODE_TX_URL: `"${process.env.MIRROR_NODE_TX_URL || "http://previewnet.mirrornode.hedera.com/api/v1/transactions/"}"`,
-        BRIDGE_ACTIVE_ON_MAINNET: false,
-        BRIDGE_ACTIVE_ON_TESTNET: true,
-        BRIDGE_ACTIVE_ON_PREVIEWNET: false
+        ETHERSCAN_GAS_PRICE_ENDPOINT: `"${process.env.ETHERSCAN_GAS_PRICE_ENDPOINT || "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey="}"`
     }),
     new StatsPlugin("stats.json")
 ];

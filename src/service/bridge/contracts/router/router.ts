@@ -5,8 +5,7 @@ import { Contract } from "web3-eth-contract";
 import { BigNumber } from "bignumber.js";
 
 import { RouterABI } from "../abis";
-
-declare const ROUTER_CONTRACT_ADDRESS: string;
+import { getters } from "../../../../ui/store";
 
 // RouterService wraps a contract instance of the Router contract
 export class RouterService {
@@ -17,16 +16,8 @@ export class RouterService {
     public constructor(provider: WebsocketProvider) {
         const web3 = new Web3(provider);
 
-        this.contract = new web3.eth.Contract(RouterABI, ROUTER_CONTRACT_ADDRESS);
+        this.contract = new web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
         this.contract.setProvider(provider);
-    }
-
-    public static getInstance(provider: WebsocketProvider): RouterService {
-        if (!RouterService.instance) {
-            RouterService.instance = new RouterService(provider);
-        }
-
-        return RouterService.instance;
     }
 
     // Read-only operations

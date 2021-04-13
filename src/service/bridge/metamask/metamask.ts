@@ -1,12 +1,9 @@
 import Web3 from "web3";
 import { BigNumber } from "bignumber.js";
 import { RouterABI } from "../contracts/abis";
+import { getters } from "../../../ui/store";
 
 declare let window: any;
-
-declare const ETHEREUM_CHAIN_ID: string;
-declare const ETHEREUM_NETWORK: string;
-declare const ROUTER_CONTRACT_ADDRESS: string;
 
 function reloadWindow(): void {
     window.location.reload();
@@ -31,8 +28,8 @@ export class MetamaskService {
             throw new Error("Metamask not found");
         }
 
-        if (this.metamaskProvider.chainId !== ETHEREUM_CHAIN_ID) {
-            throw new Error(`Invalid network selected. It should be ${ETHEREUM_NETWORK}`);
+        if (this.metamaskProvider.chainId !== getters.currentNetwork().bridge?.ethereumChainId) {
+            throw new Error(`Invalid network selected. It should be ${getters.currentNetwork().bridge?.ethereumNetwork}`);
         }
     }
 
@@ -47,7 +44,7 @@ export class MetamaskService {
     public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: BigNumber, signatures: string[], handleReceipt: any, handleError: any): Promise<any> {
         const options = { from: this.selectedAddress() };
 
-        const contract = new this.web3.eth.Contract(RouterABI, ROUTER_CONTRACT_ADDRESS);
+        const contract = new this.web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
         return contract.methods
             .mint(transactionId, wrappedToken, receiver, amount, signatures)
             .send(options)

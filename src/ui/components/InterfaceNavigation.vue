@@ -141,11 +141,11 @@ export default defineComponent({
             {
                 name: "wrap-hbar",
                 label: context.root.$t("interfaceNavigation.wrapHbar").toString()
-            },
-            {
-                name: "unwrap-whbar",
-                label: context.root.$t("interfaceNavigation.unwrapWHbar").toString()
             }
+            // {
+            //     name: "unwrap-whbar",
+            //     label: context.root.$t("interfaceNavigation.unwrapWHbar").toString()
+            // }
         ];
 
         const menuOpen = computed(() => store.state.ui.interfaceMenu.isOpen);
@@ -156,15 +156,8 @@ export default defineComponent({
         });
 
         const bridgeActive = computed(() => {
-            const currentNetwork = getters.currentNetwork().name;
-            switch (currentNetwork) {
-                case NetworkName.TESTNET:
-                    return BRIDGE_ACTIVE_ON_TESTNET;
-                case NetworkName.PREVIEW:
-                    return BRIDGE_ACTIVE_ON_PREVIEWNET;
-                case NetworkName.MAINNET:
-                    return BRIDGE_ACTIVE_ON_MAINNET;
-            }
+            const currentNetwork = getters.currentNetwork();
+            return currentNetwork.bridge;
         });
 
         return {

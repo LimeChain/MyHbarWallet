@@ -132,7 +132,6 @@ let transactionInterval: any = null;
 declare const window: any;
 
 // Defined in vue.config.js.
-declare const ETHERSCAN_TX_URL: string;
 
 interface State {
     amount: string | null;
@@ -171,11 +170,6 @@ interface State {
 const estimatedFeeHbar = new BigNumber(0.01);
 const estimatedFeeTinybar = estimatedFeeHbar.multipliedBy(getValueOfUnit(Unit.Hbar));
 
-// Defined in vue.config.js.
-declare const ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT: string;
-declare const ETHEREUM_BRIDGE_TOPIC_ID: string;
-declare const MIRROR_NODE_TX_URL: string;
-
 function getAccountFromString(accountString: string): AccountId {
     const parts = accountString.split(".");
     return new AccountId({ shard: parseInt(parts[ 0 ]), realm: parseInt(parts[ 1 ]), account: parseInt(parts[ 2 ]) });
@@ -200,7 +194,6 @@ export default defineComponent({
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
-        const provider = InfuraProviderService.getInstance();
         const state = reactive<State>({
             amount: "",
             account: null,
@@ -255,8 +248,8 @@ export default defineComponent({
         });
 
         onMounted(async() => {
-            state.providerService = InfuraProviderService.getInstance();
-            state.routerService = RouterService.getInstance(state.providerService.getProvider());
+            state.providerService = new InfuraProviderService();
+            state.routerService = new RouterService(state.providerService.getProvider());
             await getBridgeTokens();
             // const gasPriceInfo = await gasPriceOracle();
             // state.gasPrice = gasPriceInfo.result.SafeGasPrice;
@@ -269,7 +262,7 @@ export default defineComponent({
             }
         });
 
-        state.account = getAccountFromString(ETHEREUM_BRIDGE_CUSTODIAL_ACCOUNT);
+        state.account = getAccountFromString(getters.currentNetwork().bridge?.bridgeAccount!);
 
         const idInput: Ref<IdInputElement | null> = ref(null);
 
@@ -699,8 +692,8 @@ export default defineComponent({
         }
 
         async function visualizeSuccessModal(receipt: any): Promise<void> {
-            state.hederaExplorerTx = `${MIRROR_NODE_TX_URL}${state.transactionId}`;
-            state.ethereumTransaction = `${ETHERSCAN_TX_URL}${receipt.transactionHash}`;
+            state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}${state.transactionId}`;
+            state.ethereumTransaction = `${getters.currentNetwork().bridge?.etherscanTxUrl}${receipt.transactionHash}`;
 
             await actions.refreshBalancesAndRate();
             state.modalWrapTokensState.isOpen = false;

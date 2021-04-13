@@ -4,25 +4,14 @@ import { BigNumber } from "bignumber.js";
 
 import { TokenABI } from "../abis";
 
-declare const TOKEN_CONTRACT_ADDRESS: string;
-declare const ROUTER_CONTRACT_ADDRESS: string;
-
 // TokenService wraps a contract instance of the WrappedToken contract
 export class TokenService {
     private static instance: TokenService;
 
     private contract: Contract;
 
-    constructor(provider: Web3) {
-        this.contract = new provider.eth.Contract(TokenABI, TOKEN_CONTRACT_ADDRESS);
-    }
-
-    public static getInstance(provider: Web3): TokenService {
-        if (!TokenService.instance) {
-            TokenService.instance = new TokenService(provider);
-        }
-
-        return TokenService.instance;
+    constructor(address: string, provider: Web3) {
+        this.contract = new provider.eth.Contract(TokenABI, address);
     }
 
     // Read operations
@@ -33,9 +22,9 @@ export class TokenService {
 
     // Write operations
 
-    public approve(amount: BigNumber, options: any = null): Promise<any> {
+    public approve(address: string, amount: BigNumber, options: any = null): Promise<any> {
         return this.contract.methods
-            .approve(ROUTER_CONTRACT_ADDRESS, amount)
+            .approve(address, amount)
             .send(options);
     }
 }

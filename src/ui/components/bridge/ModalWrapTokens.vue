@@ -13,18 +13,20 @@
                 :serviceFee="state.serviceFee"
                 :totalToReceive="state.totalToReceive"
             />
-            <Notice>{{ state.noticeText }}</Notice>
+            <Notice><div v-html="state.noticeText"></div></Notice>
         <template v-if="!state.depositCompleted">
             <p class="fee-display">
-                <span class="fee-label">{{ $t("interfaceWrapHbar.hedera.fee") }}<InfoButton message="Test Message" /></span>
+                <span class="fee-label">{{ $t("interfaceWrapHbar.hedera.fee") }}<InfoButton :message="$t('interfaceWrapHbar.hederaFeeInfo')" /></span>
                 <span class="fee-value">0.1</span>
             </p>
         </template>
         <template v-if="state.depositCompleted">
+            <!--
             <p class="fee-display">
                 <span class="fee-label">{{ $t("interfaceWrapHbar.ethereum.fee") }}<InfoButton message="Test Message" /></span>
                 <span class="fee-value">0.5</span>
             </p>
+            -->
         </template>
         <template>
             <div class="buttons-containter">
@@ -234,6 +236,8 @@ export default defineComponent({
 #modal-wrap-tokens .notice{
     background: rgba(98, 192, 170, 0.1);
     border-radius: 5px;
+    align-items: center;
+    justify-content: center;
 }
 
 #modal-wrap-tokens .notice .message{
@@ -243,6 +247,7 @@ export default defineComponent({
     font-size: 14px;
     line-height: 17px;
     color: #62C0AA;
+    text-align: center;
 }
 
 #modal-wrap-tokens .icon{

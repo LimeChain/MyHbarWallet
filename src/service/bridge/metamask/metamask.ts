@@ -40,6 +40,10 @@ export class MetamaskService {
         return this.metamaskProvider.selectedAddress;
     }
 
+    public croppedSelectedAddress(): string {
+        return `${this.metamaskProvider.selectedAddress?.substr(0, 6)}...${this.metamaskProvider.selectedAddress?.substr(this.metamaskProvider.selectedAddress.length - 6)}`;
+    }
+
     public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: BigNumber, signatures: string[], handleSuccess: any, handleError: any): Promise<any> {
         const options = { from: this.selectedAddress() };
 

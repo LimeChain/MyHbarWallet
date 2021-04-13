@@ -3,11 +3,12 @@
     <InterfaceForm :title="$t('interfaceWrapHbar.title')" :description="$t('interfaceWrapHbar.description')">
         <span class="connect-wallet-bar">
             <ConnectWalletButton
+                :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : 'Connect Wallet'"
                 @connect="handleConnectToMetamask" />
         </span>
         <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
         <Select
-            v-model="state.asset"
+            v-model="state.assetNameWithId"
             class="select"
             :options="availableAssets"
             @change="handleSelectChange"
@@ -69,8 +70,18 @@
                 <p>Transfered <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.ethAddress}}</strong></p>
                 <div class="transactions-list">
                     <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
-                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.deposit.transaction")}}</a><br>
-                    <a :href="state.ethereumTransaction" target="_blank">{{$t("interfaceWrapHbar.claim.transaction")}}</a>
+                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.deposit.transaction")}}
+                        <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                        />
+                    </a><br>
+                    <a :href="state.ethereumTransaction" target="_blank">{{$t("interfaceWrapHbar.claim.transaction")}}
+                        <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                        />
+                    </a>
                 </div>
             </div>
         </ModalSuccess>
@@ -89,7 +100,7 @@ import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext,
 import { BigNumber } from "bignumber.js";
 import { AccountId, TokenId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
-import { mdiHelpCircleOutline } from "@mdi/js";
+import { mdiLaunch, mdiHelpCircleOutline } from "@mdi/js";
 
 import TextInput from "../../components/TextInput.vue";
 import InterfaceForm from "../../components/InterfaceForm.vue";
@@ -113,6 +124,7 @@ import { tokenTransfer } from "../../../service/bridge/hedera/hedera";
 import { Token } from "src/domain/token";
 import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components/bridge/ModalWrapTokens.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
+import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
 
 let timeout: any = null;
 let web3: any;
@@ -143,6 +155,7 @@ interface State {
     showEthMessage: boolean;
     wrapAmount: string;
     asset: string;
+    assetNameWithId: string;
     assetSelectionError: string;
     bridgeTokens: Map<string, Token> | null;
     providerService: InfuraProviderService | null;
@@ -182,10 +195,12 @@ export default defineComponent({
         ModalWrapTokens,
         IDInput,
         Notice,
-        Select
+        Select,
+        MaterialDesignIcon
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
+        console.log(process.env);
         const provider = InfuraProviderService.getInstance();
         const state = reactive<State>({
             amount: "",
@@ -194,7 +209,7 @@ export default defineComponent({
             memo: "",
             isBusy: false,
             idErrorMessage: "",
-            amountErrorMessage: "amount err",
+            amountErrorMessage: "",
             idValid: false,
             transactionId: "",
             modalSuccessState: {
@@ -219,7 +234,7 @@ export default defineComponent({
                 ethereumNetworkFee: ""
             },
             ethAddress: "",
-            ethAddressErrorMessage: "eth address err",
+            ethAddressErrorMessage: "",
             gasPrice: "",
             txFee: "",
             serviceFee: "",
@@ -227,6 +242,7 @@ export default defineComponent({
             showEthMessage: false,
             wrapAmount: "",
             asset: Asset.Hbar,
+            assetNameWithId: Asset.Hbar,
             assetSelectionError: "",
             bridgeTokens: null,
             providerService: null,
@@ -391,7 +407,15 @@ export default defineComponent({
 
         const availableAssets = computed(() => {
             if (bridgeTokens.value.length > 0) {
-                return [ Asset.Hbar, ...bridgeTokens.value ];
+                const assetsWithNameAndId = [];
+                assetsWithNameAndId.push(Asset.Hbar);
+                state.bridgeTokens.forEach((token: Token, symbol: string) => {
+                    // const tokenId = `${token.tokenId.shard}.${token.tokenId.realm}.${token.tokenId.token}`;
+                    // console.log(token.tokenId.toString());
+                    assetsWithNameAndId.push(`${symbol} (${token.tokenId.toString()})`);
+                });
+                return assetsWithNameAndId;
+                // return [ Asset.Hbar, ...bridgeTokens.value ];
             }
             state.assetBalance = getters.currentUserBalance()?.toString()!;
             return [ Asset.Hbar ];
@@ -496,7 +520,7 @@ export default defineComponent({
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
             state.totalToReceive = amountBn.minus(serviceFee).toString();
 
-            state.modalWrapTokensState.noticeText = `Deposit ${state?.amount} ${state.asset} for transferring to Ethereum`;
+            state.modalWrapTokensState.noticeText = `Deposit <strong>${state?.amount} ${state.asset}</strong> for transferring to Ethereum`;
             state.modalWrapTokensState.asset = state.asset;
             state.modalWrapTokensState.receiver = summaryReceiver.value;
             state.modalWrapTokensState.amount = state.amount?.toString()!;
@@ -608,7 +632,9 @@ export default defineComponent({
         }
 
         function handleSelectChange(changedTo: string): void {
-            if (changedTo === Asset.Hbar) {
+            state.asset = changedTo.split(" ")[ 0 ];
+            console.log(state.asset);
+            if (state.asset === Asset.Hbar) {
                 state.assetSelectionError = "";
                 state.assetBalance = getters.currentUserBalance()?.toString()!;
                 return;
@@ -616,21 +642,21 @@ export default defineComponent({
 
             const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId.toString();
             if (!tokenId) {
-                state.assetBalance = "";
+                state.assetBalance = "0";
                 state.assetSelectionError = "Ethereum Token not found";
                 return;
             }
 
             if (tokens.value.length === 0) {
-                state.assetBalance = "";
-                state.assetSelectionError = "You are not associated to any tokens.";
+                state.assetBalance = "0";
+                // state.assetSelectionError = "You are not associated to any tokens.";
                 return;
             }
 
             const tokenIds = tokens.value.map(({ tokenId }) => tokenId.toString());
             if (!tokenIds.includes(tokenId)) {
-                state.assetBalance = "";
-                state.assetSelectionError = `You need to associate to token ${changedTo}`;
+                state.assetBalance = "0";
+                // state.assetSelectionError = `You need to associate to token ${changedTo}`;
                 return;
             }
             const token = tokens.value.find((t) => t.tokenId.toString() === tokenId);
@@ -724,7 +750,7 @@ export default defineComponent({
                 const transactionData = await txData(transactionId);
                 if (transactionData.majority === true) {
                     state.transactionData = transactionData;
-                    state.modalWrapTokensState.noticeText = `Claim your ${state.totalToReceive} ${state.asset} on Ethereum`;
+                    state.modalWrapTokensState.noticeText = `Claim your <strong>${state.totalToReceive} ${state.asset}</strong> on Ethereum`;
                     state.modalWrapTokensState.depositBusy = false;
                     state.modalWrapTokensState.depositDisabled = true;
                     state.modalWrapTokensState.depositCompleted = true;
@@ -766,7 +792,7 @@ export default defineComponent({
             } catch (error) {
                 handleError(error);
             } finally {
-                state.modalWrapTokensState.noticeText = "Waiting for confirmations...";
+                state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForConfirmations").toString();
             }
         }
 
@@ -837,6 +863,7 @@ export default defineComponent({
             const metamask = new MetamaskService();
             await metamask.initWeb3();
             state.metamask = metamask;
+            // state.metamaskAddress = metamask.selectedAddress();
             actions.alert({
                 message: "Metamask successfully connected",
                 level: "success"
@@ -863,6 +890,7 @@ export default defineComponent({
             handleEthAddressInput,
             handleGasPriceInput,
             mdiHelpCircleOutline,
+            mdiLaunch,
             availableAssets,
             handleSelectChange,
             isSelectedAssetValid,
@@ -949,7 +977,6 @@ export default defineComponent({
     font-weight: 500;
     font-size: 12px;
     line-height: 15px;
-    text-decoration-line: underline;
     color: #62C0AA;
 }
 .success .transactions-list{
@@ -962,6 +989,10 @@ export default defineComponent({
     font-size: 14px;
     margin: 7px 0 0 15px;
 }
+
+.launch-icon{
+    width: 18px;
+}
 </style>
 
 <style lang="postcss">
@@ -971,7 +1002,7 @@ export default defineComponent({
 
 #wrapHbar .select-value-container {
     border: 1px solid #62c0aa;
-    border-radius: 10px;
+    border-radius: 4px;
     box-sizing: border-box;
     width: 145px;
     margin-bottom: 13px;

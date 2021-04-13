@@ -1,7 +1,7 @@
 <template>
     <Button
         :compact="true"
-        label="Connect Wallet"
+        :label="props.walletAddress"
         @click="connectToMetamask"
     />
 </template>
@@ -15,7 +15,10 @@ import { defineComponent, SetupContext, PropType } from "@vue/composition-api";
 export default defineComponent({
     name: "ConnectWalletButton",
     components: { Button },
-    props: { state: Object as PropType<{}> },
+    props: {
+        state: Object as PropType<{}>,
+        walletAddress: { type: String }
+    },
     model: {
         prop: "state",
         event: "connect"
@@ -35,10 +38,10 @@ export default defineComponent({
 
 <style scoped>
 button{
-    border-radius: 30px;
     font-size: 12px;
     inset-inline-end: 10px;
     min-width: 10px;
     padding: 8px 12px;
 }
+
 </style>

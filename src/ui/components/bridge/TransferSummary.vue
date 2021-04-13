@@ -3,7 +3,7 @@
         <span class="title">{{ $t("interfaceWrapHbar.summary") }}</span>
         <div class="separator" />
         <p class="row">
-            <span class="label">{{ $t("interfaceWrapHbar.asset") }}<InfoButton message="Test Message" /></span>
+            <span class="label">{{ $t("interfaceWrapHbar.asset") }}<InfoButton :message="$t('interfaceWrapHbar.assetInfo')" /></span>
             <span class="value">{{ props.asset }}</span>
         </p>
         <p class="row">
@@ -15,7 +15,7 @@
             <span class="value">{{ props.amount }}</span>
         </p>
         <p class="row">
-            <span class="label">{{ $t("interfaceWrapHbar.service.fee") }}</span>
+            <span class="label">{{ $t("interfaceWrapHbar.service.fee") }}<InfoButton :message="$t('interfaceWrapHbar.serviceFeeInfo')" /></span>
             <span class="value">{{ props.serviceFee }}</span>
         </p>
         <div class="separator" />

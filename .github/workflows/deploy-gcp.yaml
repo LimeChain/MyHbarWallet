@@ -1,0 +1,37 @@
+name: Deploy to GCP
+on: push
+
+env:
+  refresh_container: |
+    docker stop ${{ secrets.CONTAINER_NAME }} || true && \
+    docker build . -t ${{ secrets.IMAGE_TAG }} && \
+    docker run --rm -dp ${{ secrets.PUBLISH_PORTS }} --name ${{ secrets.CONTAINER_NAME }} ${{ secrets.IMAGE_TAG }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build MyHbarWallet
+        run: |
+          npm install && \
+          npm run build
+
+      - name: Setup GCloud SDK
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Copy Dockerfile
+        run: gcloud compute scp --zone=${{ secrets.GCP_ZONE }} ./Dockerfile ${{ secrets.GCP_INSTANCE }}:~
+
+      - name: Copy dist folder
+        run: gcloud compute scp --zone=${{ secrets.GCP_ZONE }} --recurse ./dist/web/ ${{ secrets.GCP_INSTANCE }}:~/dist
+
+      - name: Refresh container
+        run: gcloud compute ssh ${{ secrets.GCP_INSTANCE }} --zone=${{ secrets.GCP_ZONE }} --command="${{ env.refresh_container }}"

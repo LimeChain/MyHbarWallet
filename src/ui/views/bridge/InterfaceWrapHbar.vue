@@ -67,7 +67,7 @@
             @dismiss="handleModalSuccessDismiss"
         >
             <div class="success">
-                <p>Transfered <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.ethAddress}}</strong></p>
+                <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.ethAddress}}</strong></p>
                 <div class="transactions-list">
                     <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
                     <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.deposit.transaction")}}
@@ -511,7 +511,7 @@ export default defineComponent({
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
             state.totalToReceive = amountBn.minus(serviceFee).toString();
 
-            state.modalWrapTokensState.noticeText = `Deposit <strong>${state?.amount} ${state.asset}</strong> for transferring to Ethereum`;
+            state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.deposit.notice", { amount: state.amount?.toString(), asset: state.asset }).toString();
             state.modalWrapTokensState.asset = state.asset;
             state.modalWrapTokensState.receiver = summaryReceiver.value;
             state.modalWrapTokensState.amount = state.amount?.toString()!;
@@ -746,7 +746,7 @@ export default defineComponent({
                 const transactionData = await txData(transactionId);
                 if (transactionData.majority === true) {
                     state.transactionData = transactionData;
-                    state.modalWrapTokensState.noticeText = `Claim your <strong>${state.totalToReceive} ${state.asset}</strong> on Ethereum`;
+                    state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.notice", { amount: state.totalToReceive, asset: state.asset }).toString();
                     state.modalWrapTokensState.depositBusy = false;
                     state.modalWrapTokensState.depositDisabled = true;
                     state.modalWrapTokensState.depositCompleted = true;
@@ -773,11 +773,16 @@ export default defineComponent({
                     transactionData.recipient,
                     transactionData.amount,
                     signatures,
+                    handleTransactionHash,
                     visualizeSuccessModal,
                     handleModalSuccessDismiss);
             } catch (error) {
                 console.log(error);
             }
+        }
+
+        function handleTransactionHash(): Promise<void> {
+            state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForClaim").toString();
         }
 
         async function handleDeposit(): Promise<void> {
@@ -849,6 +854,7 @@ export default defineComponent({
         function handleClaim(): void {
             // props.state.claimBusy = true;
             state.modalWrapTokensState.claimBusy = true;
+            state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.metamaskConfirmation").toString();
             mint(state.transactionId, state.transactionData);
         }
 

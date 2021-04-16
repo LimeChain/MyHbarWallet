@@ -49,7 +49,7 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
             infuraApiUrl: "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9",
             ethereumChainId: "0x3",
             ethereumNetwork: "Ropsten",
-            mirrorNodeUrl: "http://testnet.mirrornode.hedera.com/api/v1/transactions/"
+            mirrorNodeUrl: "http://testnet.mirrornode.hedera.com/api/v1/"
         }
     },
     "network.previewnet": {
@@ -65,7 +65,7 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
             infuraApiUrl: "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9",
             ethereumChainId: "0x3",
             ethereumNetwork: "Ropsten",
-            mirrorNodeUrl: "http://previewnet.mirrornode.hedera.com/api/v1/transactions/"
+            mirrorNodeUrl: "http://previewnet.mirrornode.hedera.com/api/v1/"
         }
     },
     "network.mainnet": {

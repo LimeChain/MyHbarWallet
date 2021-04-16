@@ -5,6 +5,7 @@ import { NetworkName, NetworkSettings } from "../domain/network";
 import { Session } from "../domain/user";
 import Wallet from "../domain/wallets/wallet";
 import { Token } from "../domain/token";
+import { getToken } from "./bridge/mirror-node";
 
 import { kabutoRequest } from "./request";
 
@@ -202,15 +203,10 @@ export async function getTokens(
 }
 
 export async function getTokensInfo(tokenIds: string[], client: Client): Promise<any> {
-    const { TokenInfoQuery, TokenId } = await import("@hashgraph/sdk");
     try {
         const promises = [];
         for (const id of tokenIds) {
-            const tokenId = TokenId.fromString(id);
-            promises.push(
-                new TokenInfoQuery()
-                    .setTokenId(tokenId)
-                    .execute(client));
+            promises.push(getToken(id));
         }
 
         return Promise.all(promises);

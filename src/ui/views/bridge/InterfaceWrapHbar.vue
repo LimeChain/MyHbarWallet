@@ -121,7 +121,7 @@ import { gasPriceOracle } from "../../../service/etherscan";
 import Select from "../../components/Select.vue";
 import { Asset } from "../../../domain/transfer";
 import { tokenTransfer } from "../../../service/bridge/hedera/hedera";
-import { Token } from "src/domain/token";
+import { MirrorNodeToken } from "src/domain/token";
 import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components/bridge/ModalWrapTokens.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
@@ -156,7 +156,7 @@ interface State {
     asset: string;
     assetNameWithId: string;
     assetSelectionError: string;
-    bridgeTokens: Map<string, Token> | null;
+    bridgeTokens: Map<string, MirrorNodeToken> | null;
     providerService: InfuraProviderService | null;
     routerService: RouterService | null;
     contractTokensMap: Map<string, string> | null;
@@ -296,7 +296,7 @@ export default defineComponent({
             state.contractTokensMap = await state.routerService?.getTokens()!;
             const tokenIds = [ ...state.contractTokensMap.keys() ].filter((t) => t !== "HBAR");
             const tokens = await actions.getTokens(tokenIds);
-            const symbolToToken = new Map<string, Token>();
+            const symbolToToken = new Map<string, MirrorNodeToken>();
 
             for (const token of tokens) {
                 symbolToToken.set(token.symbol, token);
@@ -360,7 +360,7 @@ export default defineComponent({
 
         const scaleFactor = computed(() => {
             const decimals = tokens.value!.filter(
-                (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.tokenId.toString()
+                (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.token_id
             )[ 0 ].decimals;
 
             return new BigNumber(
@@ -372,7 +372,7 @@ export default defineComponent({
             const adjustedAmount = amount.multipliedBy(scaleFactor.value);
             if (tokens.value != null) {
                 return tokens.value.filter(
-                    (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.tokenId.toString()
+                    (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.token_id
                 )[ 0 ].balance.isGreaterThan(adjustedAmount);
             }
             return false;
@@ -404,10 +404,8 @@ export default defineComponent({
             if (bridgeTokens.value.length > 0) {
                 const assetsWithNameAndId = [];
                 assetsWithNameAndId.push(Asset.Hbar);
-                state.bridgeTokens.forEach((token: Token, symbol: string) => {
-                    // const tokenId = `${token.tokenId.shard}.${token.tokenId.realm}.${token.tokenId.token}`;
-                    // console.log(token.tokenId.toString());
-                    assetsWithNameAndId.push(`${symbol} (${token.tokenId.toString()})`);
+                state.bridgeTokens.forEach((token: MirrorNodeToken, symbol: string) => {
+                    assetsWithNameAndId.push(`${symbol} (${token.token_id})`);
                 });
                 return assetsWithNameAndId;
                 // return [ Asset.Hbar, ...bridgeTokens.value ];
@@ -628,14 +626,13 @@ export default defineComponent({
 
         function handleSelectChange(changedTo: string): void {
             state.asset = changedTo.split(" ")[ 0 ];
-            console.log(state.asset);
             if (state.asset === Asset.Hbar) {
                 state.assetSelectionError = "";
                 state.assetBalance = getters.currentUserBalance()?.toString()!;
                 return;
             }
 
-            const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId.toString();
+            const tokenId = state.bridgeTokens?.get(state.asset)?.token_id;
             if (!tokenId) {
                 state.assetBalance = "0";
                 state.assetSelectionError = "Ethereum Token not found";
@@ -662,7 +659,7 @@ export default defineComponent({
 
         async function handleTokenTransfer(): Promise<void> {
             const recipient: AccountId | null = state.account;
-            const tokenId = state.bridgeTokens?.get(state.asset)?.tokenId;
+            const tokenId = TokenId.fromString(state.bridgeTokens?.get(state.asset)?.token_id);
             const client = getters.currentUser().session.client as Client;
 
             const transactionId = await tokenTransfer(
@@ -696,7 +693,7 @@ export default defineComponent({
         }
 
         async function visualizeSuccessModal(receipt: any): Promise<void> {
-            state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}${state.transactionId}`;
+            state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}transactions/${state.transactionId}`;
             state.ethereumTransaction = `${getters.currentNetwork().bridge?.etherscanTxUrl}${receipt.transactionHash}`;
 
             await actions.refreshBalancesAndRate();
@@ -725,6 +722,7 @@ export default defineComponent({
             state.showEthMessage = false;
             state.asset = Asset.Hbar;
             state.assetBalance = getters.currentUserBalance()?.toString()!;
+            state.assetNameWithId = Asset.Hbar;
             state.modalWrapTokensState = {
                 isOpen: false,
                 isBusy: false,

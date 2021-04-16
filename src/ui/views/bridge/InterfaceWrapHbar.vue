@@ -179,6 +179,10 @@ function constructMemo(address: string | null, txFee: string | null, gasPriceGwe
     return `${address}-${txFee}-${gasPriceGwei}`;
 }
 
+function padZeros(target: string): string {
+    return target.padStart(9, "0");
+}
+
 export default defineComponent({
     components: {
         ConnectWalletButton,
@@ -678,7 +682,7 @@ export default defineComponent({
                 const { seconds, nanos } = transactionId.validStart;
 
                 // build the transaction id from the data.
-                state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
+                state.transactionId = `${shard}.${realm}.${account}-${seconds}-${padZeros(nanos.toString())}`; // padding nanoseconds due to mirror node retrieval
                 handleValidatorTransactionData(state.transactionId);
             }
 
@@ -843,7 +847,7 @@ export default defineComponent({
                 const { seconds, nanos } = transactionIntermediate.validStart;
 
                 // build the transaction id from the data.
-                state.transactionId = `${shard}.${realm}.${account}-${seconds}-${nanos}`;
+                state.transactionId = `${shard}.${realm}.${account}-${seconds}-${padZeros(nanos.toString())}`; // padding nanoseconds due to mirror node retrieval
                 handleValidatorTransactionData(state.transactionId);
             }
 

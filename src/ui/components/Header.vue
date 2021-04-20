@@ -29,6 +29,7 @@
             </div>
             <div class="spacer" />
             <div class="pending-transaction-button">
+                <PendingTransferButton label="Pending Bridge Transfer" />
             </div>
             <div class="links">
                 <router-link
@@ -143,6 +144,7 @@ import HeaderHamburgerMenu from "./HeaderHamburgerMenu.vue";
 import HeaderHamburgerButton from "./HeaderHamburgerButton.vue";
 import ModalLogOut from "./ModalLogOut.vue";
 import MaterialDesignIcon from "./MaterialDesignIcon.vue";
+import PendingTransferButton from "./bridge/PendingTransferButton.vue";
 
 // Yes, it is used
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -157,7 +159,8 @@ export default defineComponent({
         HeaderHamburgerMenu,
         HeaderHamburgerButton,
         ModalLogOut,
-        MaterialDesignIcon
+        MaterialDesignIcon,
+        PendingTransferButton
     },
     setup(_, context) {
         const isInterface = computed(() => {
@@ -419,5 +422,10 @@ export default defineComponent({
 
 .external-icon {
     margin-inline-start: 5px;
+}
+
+.pending-transaction-button{
+    display: flex;
+    align-items: center;
 }
 </style>

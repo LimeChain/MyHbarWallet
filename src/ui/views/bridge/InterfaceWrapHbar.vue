@@ -264,6 +264,27 @@ export default defineComponent({
                     actions.refreshBalancesAndRate();
                 }
             }
+            localStorage.pendingTransferToEthereum = true;
+            if (localStorage.pendingTransferToEthereum) {
+                // Update state variables
+                state.modalWrapTokensState = {
+                    isOpen: true,
+                    isBusy: false,
+                    noticeText: "Transfer in progress",
+                    depositDisabled: false,
+                    claimDisabled: true,
+                    depositBusy: true,
+                    claimBusy: false,
+                    depositCompleted: false,
+                    asset: "",
+                    receiver: "",
+                    amount: "",
+                    serviceFee: "",
+                    totalToReceive: "",
+                    hederaNetworkFee: "0.1",
+                    ethereumNetworkFee: ""
+                };
+            }
         });
 
         state.account = getAccountFromString(getters.currentNetwork().bridge?.bridgeAccount!);

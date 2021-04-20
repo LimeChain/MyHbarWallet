@@ -141,11 +141,11 @@ export default defineComponent({
             {
                 name: "wrap-hbar",
                 label: context.root.$t("interfaceNavigation.wrapHbar").toString()
+            },
+            {
+                name: "unwrap-whbar",
+                label: context.root.$t("interfaceNavigation.unwrapWHbar").toString()
             }
-            // {
-            //     name: "unwrap-whbar",
-            //     label: context.root.$t("interfaceNavigation.unwrapWHbar").toString()
-            // }
         ];
 
         const menuOpen = computed(() => store.state.ui.interfaceMenu.isOpen);

@@ -264,11 +264,11 @@ export default defineComponent({
                     actions.refreshBalancesAndRate();
                 }
             }
-            localStorage.pendingTransferToEthereum = true;
+            localStorage.pendingTransferToEthereum = false;
             if (localStorage.pendingTransferToEthereum) {
                 // Update state variables
                 state.modalWrapTokensState = {
-                    isOpen: true,
+                    isOpen: false,
                     isBusy: false,
                     noticeText: "Transfer in progress",
                     depositDisabled: false,

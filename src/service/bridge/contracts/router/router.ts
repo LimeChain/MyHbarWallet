@@ -4,42 +4,38 @@ import { toUtf8 } from "web3-utils";
 import { Contract } from "web3-eth-contract";
 import { BigNumber } from "bignumber.js";
 
-import { RouterABI } from "../abis";
+import { RouterABI, TokenABI } from "../abis";
 import { getters } from "../../../../ui/store";
+import { InfuraProviderService } from "../../provider/infura-provider";
 
 // RouterService wraps a contract instance of the Router contract
-export class RouterService {
-    private static instance: RouterService;
-
+export class RouterService extends InfuraProviderService {
     private contract: Contract;
 
-    public constructor(provider: WebsocketProvider) {
-        const web3 = new Web3(provider);
+    public constructor() {
+        super();
+        const web3 = new Web3(this.getProvider());
 
         this.contract = new web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
-        this.contract.setProvider(provider);
+        this.contract.setProvider(this.getProvider());
     }
 
     // Read-only operations
 
-    public async serviceFee(): Promise<BigNumber> {
-        return this.contract.methods.serviceFee().call();
+    public async wrappedAssetsCount(): Promise<BigNumber> {
+        return this.contract.methods.wrappedAssetsCount().call();
     }
 
-    public async wrappedTokensCount(): Promise<BigNumber> {
-        return this.contract.methods.wrappedTokensCount().call();
+    public async wrappedAssetAt(index: number): Promise<string> {
+        return this.contract.methods.wrappedAssetAt(index).call();
     }
 
-    public async wrappedTokenAt(index: number): Promise<string> {
-        return this.contract.methods.wrappedTokenAt(index).call();
+    public async nativeToWrapped(native: string): Promise<string> {
+        return this.contract.methods.nativeToWrapped(native).call();
     }
 
-    public async nativeToWrappedToken(nativeToken: string): Promise<string> {
-        return this.contract.methods.nativeToWrappedToken(nativeToken).call();
-    }
-
-    public async wrappedToNativeToken(wrappedToken: string): Promise<string> {
-        return this.contract.methods.wrappedToNativeToken(wrappedToken).call();
+    public async wrappedToNative(wrapped: string): Promise<string> {
+        return this.contract.methods.wrappedToNative(wrapped).call();
     }
 
     // Write operations
@@ -51,17 +47,46 @@ export class RouterService {
             .send(options);
     }
 
-    public async getTokens(): Promise<Map<string, string>> {
-        const tokensCount = await this.wrappedTokensCount();
+    // Returns an array of all wrapped assets {address, symbols}
+    public async getWrappedAssets(): Promise<any> {
+        const tokensCount = await this.wrappedAssetsCount();
+
+        console.log(tokensCount);
+        const assets = [];
+        for (let i = 0; i < Number(tokensCount); i++) {
+            assets.push(this.getWrappedAssetAndSymbols(i));
+        }
+
+        return Promise.all(assets);
+    }
+
+    public async getWrappedAssetAndSymbols(index: number): Promise<any> {
+        const address = await this.wrappedAssetAt(index);
+        console.log(address);
+        const web3 = new Web3(this.getProvider());
+        const wrappedAssetContract = new web3.eth.Contract(TokenABI, address);
+        wrappedAssetContract.setProvider(this.getProvider());
+
+        const symbols = await wrappedAssetContract.methods.symbols().call();
+
+        return {
+            address,
+            symbols
+        };
+    }
+
+    // Returns a map of all contract assets (native, wrapped)
+    public async getAssets(): Promise<Map<string, string>> {
+        const tokensCount = await this.wrappedAssetsCount();
         let wrappedTokens = [];
         for (let i = 0; i < Number(tokensCount); i++) {
-            wrappedTokens.push(this.wrappedTokenAt(i));
+            wrappedTokens.push(this.wrappedAssetAt(i));
         }
 
         wrappedTokens = await Promise.all(wrappedTokens);
         let nativeTokens = [];
         for (const wrappedToken of wrappedTokens) {
-            nativeTokens.push(this.wrappedToNativeToken(wrappedToken));
+            nativeTokens.push(this.wrappedToNative(wrappedToken));
         }
         nativeTokens = await Promise.all(nativeTokens);
 

@@ -108,16 +108,13 @@ import Button from "../../components/Button.vue";
 import IDInput, { IdInputElement } from "../../components/IDInput.vue";
 import { convert, getValueOfUnit, Unit } from "../../../service/units";
 import { RouterService } from "../../../service/bridge/contracts/router/router";
-import { InfuraProviderService } from "../../../service/bridge/provider/infura-provider";
 import { MetamaskService } from "../../../service/bridge/metamask/metamask";
-import { Item } from "../../components/bridge/ModalWrapSummaryItems.vue";
 import { formatHbar, validateHbar } from "../../../service/format";
 import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
 import Notice from "../../components/Notice.vue";
 import { LoginMethod } from "../../../domain/wallets/wallet";
 import { actions, getters } from "../../store";
-import { txMetadata, txData } from "../../../service/hedera-validator";
-import { gasPriceOracle } from "../../../service/etherscan";
+import { txData } from "../../../service/hedera-validator";
 import Select from "../../components/Select.vue";
 import { Asset } from "../../../domain/transfer";
 import { tokenTransfer } from "../../../service/bridge/hedera/hedera";
@@ -126,7 +123,6 @@ import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
 
-let timeout: any = null;
 let web3: any;
 let transactionInterval: any = null;
 declare const window: any;
@@ -147,8 +143,6 @@ interface State {
     modalWrapTokensState: ModalWrapTokensState;
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
-    gasPrice: string;
-    txFee: string;
     serviceFee: string;
     ethereumTransaction: any;
     showEthMessage: boolean;
@@ -157,7 +151,6 @@ interface State {
     assetNameWithId: string;
     assetSelectionError: string;
     bridgeTokens: Map<string, MirrorNodeToken> | null;
-    providerService: InfuraProviderService | null;
     routerService: RouterService | null;
     contractTokensMap: Map<string, string> | null;
     assetBalance: string;
@@ -175,8 +168,8 @@ function getAccountFromString(accountString: string): AccountId {
     return new AccountId({ shard: parseInt(parts[ 0 ]), realm: parseInt(parts[ 1 ]), account: parseInt(parts[ 2 ]) });
 }
 
-function constructMemo(address: string | null, txFee: string | null, gasPriceGwei: string | null): string {
-    return `${address}-${txFee}-${gasPriceGwei}`;
+function constructMemo(address: string | null): string {
+    return `${address}`;
 }
 
 function padZeros(target: string): string {
@@ -231,8 +224,6 @@ export default defineComponent({
             },
             ethAddress: "",
             ethAddressErrorMessage: "",
-            gasPrice: "",
-            txFee: "",
             serviceFee: "",
             ethereumTransaction: null,
             showEthMessage: false,
@@ -241,7 +232,6 @@ export default defineComponent({
             assetNameWithId: Asset.Hbar,
             assetSelectionError: "",
             bridgeTokens: null,
-            providerService: null,
             routerService: null,
             contractTokensMap: null,
             assetBalance: "",
@@ -252,13 +242,9 @@ export default defineComponent({
         });
 
         onMounted(async() => {
-            state.providerService = new InfuraProviderService();
-            state.routerService = new RouterService(state.providerService.getProvider());
+            state.routerService = new RouterService();
             await getBridgeTokens();
-            // const gasPriceInfo = await gasPriceOracle();
-            // state.gasPrice = gasPriceInfo.result.SafeGasPrice;
-            // const metadata = await txMetadata(state.gasPrice);
-            // state.txFee = new BigNumber(metadata.txFee).toString();
+
             if (getters.currentUser() != null) {
                 if (getters.currentUserTokens() == null) {
                     actions.refreshBalancesAndRate();
@@ -273,7 +259,7 @@ export default defineComponent({
                     noticeText: "Transfer in progress",
                     depositDisabled: false,
                     claimDisabled: true,
-                    depositBusy: true,
+                    depositBusy: false,
                     claimBusy: false,
                     depositCompleted: false,
                     asset: "",
@@ -301,20 +287,9 @@ export default defineComponent({
             state.ethAddress = value;
         }
 
-        async function handleGasPriceInput(value: string): Promise<void> {
-            clearTimeout(timeout);
-            timeout = setTimeout(async() => {
-                if (value && value !== "0") {
-                    state.gasPrice = value;
-                    const metadata = await txMetadata(state.gasPrice);
-                    state.txFee = new BigNumber(metadata.txFee).toString();
-                }
-            }, 300);
-        }
-
         async function getBridgeTokens(): Promise<void> {
             // retrieve from contract
-            state.contractTokensMap = await state.routerService?.getTokens()!;
+            state.contractTokensMap = await state.routerService?.getAssets()!;
             const tokenIds = [ ...state.contractTokensMap.keys() ].filter((t) => t !== "HBAR");
             const tokens = await actions.getTokens(tokenIds);
             const symbolToToken = new Map<string, MirrorNodeToken>();
@@ -335,10 +310,6 @@ export default defineComponent({
             }
         );
 
-        function handleValid(valid: boolean): void {
-            state.idValid = valid;
-        }
-
         const tokens = computed(() => getters.currentUserTokens() || []);
 
         const isAmountValid = computed(() => {
@@ -356,15 +327,6 @@ export default defineComponent({
             if (state.serviceFee) {
                 return (
                     new BigNumber(state.serviceFee).isGreaterThan(new BigNumber(0)) && validateHbar(state.serviceFee)
-                );
-            }
-            return false;
-        });
-
-        const isTxFeeValid = computed(() => {
-            if (state.txFee) {
-                return (
-                    new BigNumber(state.txFee).isGreaterThan(new BigNumber(0)) && validateHbar(state.txFee)
                 );
             }
             return false;
@@ -486,50 +448,12 @@ export default defineComponent({
         // Modal Fee Summary State TODO: Is this needed
         const summaryAmount = computed(() => amount.value);
         const summaryReceiver = computed(formatEthAddress);
-        const summaryItems = computed((): Item[] => [
-            {
-                description: context.root.$t("interfaceSendTransfer.transferAmount").toString(),
-                value:
-                            isAmountValid && state.amount ?
-                                new BigNumber(state.amount) :
-                                new BigNumber(0),
-                currency: "ℏ"
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.hederaNetworkFee").toString(),
-                value: estimatedFeeHbar,
-                currency: "ℏ"
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.ethereumNetworkFee").toString(),
-                value: isTxFeeValid && state.txFee ?
-                    new BigNumber(convert(state.txFee, Unit.Tinybar, Unit.Hbar, false)) : new BigNumber(0),
-                currency: "ℏ"
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString(),
-                value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0),
-                currency: "ℏ"
-            },
-            {
-                description: "Total Wrapped",
-                value: state.wrapAmount,
-                currency: "WHBAR"
-            },
-            {
-                description: "Total",
-                value: isAmountValid && state.amount ?
-                    new BigNumber(state.amount).plus(estimatedFeeHbar) :
-                    new BigNumber(0),
-                currency: "ℏ"
-            }
-        ]);
 
         async function handleShowModalWrapTokens(): Promise<void> {
             if (!handleAmount(state.amount!)) {
                 return;
             }
-            const contractServiceFee = await state.routerService?.serviceFee()!;
+            const contractServiceFee = getters.currentNetwork().bridge?.serviceFee;
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
             state.totalToReceive = amountBn.minus(serviceFee).toString();
@@ -689,7 +613,7 @@ export default defineComponent({
                 new BigNumber(
                     state.amount!
                 ).multipliedBy(scaleFactor.value),
-                constructMemo(state.ethAddress, "0", "0"),
+                constructMemo(state.ethAddress),
                 client
             );
 
@@ -734,10 +658,6 @@ export default defineComponent({
             state.amount = "";
             state.memo = "";
             state.ethAddress = "";
-            const gasPriceInfo = await gasPriceOracle();
-            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
-            const metadata = await txMetadata(state.gasPrice);
-            state.txFee = new BigNumber(metadata.txFee).toString();
             state.serviceFee = "";
             state.ethereumTransaction = null;
             state.showEthMessage = false;
@@ -785,14 +705,10 @@ export default defineComponent({
             for (const signature of transactionData.signatures) {
                 signatures.push(`0x${signature}`);
             }
-            // const fromAddress = state.web3Provider.selectedAddress;
-            // const gasPrice = web3.utils.toWei(state.gasPrice, "gwei");
-
-            // const options = { from: fromAddress, gasPrice };
 
             try {
                 await state.metamask?.mint(bytesTransactionId,
-                    transactionData.wrappedToken,
+                    transactionData.wrappedAsset,
                     transactionData.recipient,
                     transactionData.amount,
                     signatures,
@@ -850,7 +766,7 @@ export default defineComponent({
                 .addRecipient(recipient, sendAmount)
                 .setMaxTransactionFee(Hbar.fromTinybar(estimatedFeeTinybar));
 
-            state.memo = constructMemo(state.ethAddress, "0", "0");
+            state.memo = constructMemo(state.ethAddress);
 
             if (state.memo == null || state.memo === "") {
                 state.memo = " "; // Hack for Nano X paging
@@ -904,7 +820,6 @@ export default defineComponent({
             state,
             summaryAmount,
             summaryReceiver,
-            summaryItems,
             isAmountValid,
             hbarSuffix: Unit.Hbar,
             tinybarSuffix: Unit.Tinybar,
@@ -913,11 +828,9 @@ export default defineComponent({
             handleShowModalWrapTokens,
             truncate,
             handleInput,
-            handleValid,
             handleAccount,
             isEthAddressValid,
             handleEthAddressInput,
-            handleGasPriceInput,
             mdiHelpCircleOutline,
             mdiLaunch,
             availableAssets,

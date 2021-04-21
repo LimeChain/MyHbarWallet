@@ -4,8 +4,6 @@ import { WebsocketProvider } from "web3-core";
 import { getters } from "../../../ui/store";
 
 export class InfuraProviderService {
-    private static instance: InfuraProviderService;
-
     private provider: WebsocketProvider;
 
     public constructor() {

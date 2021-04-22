@@ -2,6 +2,7 @@ import Web3 from "web3";
 import { BigNumber } from "bignumber.js";
 import { RouterABI } from "../contracts/abis";
 import { getters } from "../../../ui/store";
+import { splitSignature } from "@ethersproject/bytes";
 
 declare let window: any;
 
@@ -33,6 +34,31 @@ export class MetamaskService {
         }
     }
 
+    public chainId(): number {
+        const chainId = this.metamaskProvider.chainId;
+        return chainId.startsWith("0x") ? Number(chainId.slice(2)) : Number(chainId);
+    }
+
+    public async signTypedV4Data(msgParams: string): Promise<any> {
+        const method = "eth_signTypedData_v4";
+        const from = this.selectedAddress();
+
+        const params = [ from, msgParams ];
+
+        return new Promise((resolve, reject) => {
+            this.metamaskProvider.sendAsync({ method, params, from }, (err: any, result: any) => {
+                if (err) {
+                    reject(err);
+                }
+                if (result.error) {
+                    reject(result.error);
+                }
+
+                resolve(splitSignature(result.result));
+            });
+        });
+    }
+
     public selectedAddress(): string {
         return this.metamaskProvider.selectedAddress;
     }
@@ -51,5 +77,14 @@ export class MetamaskService {
             .on("transactionHash", handleTransactionHash)
             .on("receipt", handleReceipt)
             .on("error", handleError);
+    }
+
+    public async burnWithPermit(contractAddress: string, account: string, amount: BigNumber, deadline: number, v: number, r: any, s: any): Promise<any> {
+        const options = { from: this.selectedAddress() };
+
+        const contract = new this.web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
+        return contract.methods
+            .burnWithPermit(contractAddress, account, amount, deadline, v, r, s)
+            .send(options);
     }
 }

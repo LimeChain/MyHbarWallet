@@ -26,6 +26,7 @@ export interface NetworkSettings {
 export interface BridgeSettings {
     routerContractAddress: string; // address of router contract address
     bridgeAccount: string; // Hedera account id of bridge
+    serviceFee: number;
     validator: string;
     etherscanTxUrl: string;
     infuraApiUrl: string;
@@ -40,17 +41,17 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
         proxy: "https://grpc-web.testnet.myhbarwallet.com",
         address: "0.testnet.hedera.com:50211",
         node: { shard: 0, realm: 0, node: 3 },
-        name: NetworkName.TESTNET,
-        bridge: {
-            routerContractAddress: "0x24c61EB6c08dEB5A78EafCd84F6Fa50d2890A80D",
-            bridgeAccount: "0.0.512994",
-            validator: "http://34.89.159.242/api/v1/",
-            etherscanTxUrl: "https://ropsten.etherscan.io/tx/",
-            infuraApiUrl: "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9",
-            ethereumChainId: "0x3",
-            ethereumNetwork: "Ropsten",
-            mirrorNodeUrl: "http://testnet.mirrornode.hedera.com/api/v1/"
-        }
+        name: NetworkName.TESTNET
+        // bridge: {
+        //     routerContractAddress: "0x24c61EB6c08dEB5A78EafCd84F6Fa50d2890A80D",
+        //     bridgeAccount: "0.0.512994",
+        //     validator: "http://34.89.159.242/api/v1/",
+        //     etherscanTxUrl: "https://ropsten.etherscan.io/tx/",
+        //     infuraApiUrl: "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9",
+        //     ethereumChainId: "0x3",
+        //     ethereumNetwork: "Ropsten",
+        //     mirrorNodeUrl: "http://testnet.mirrornode.hedera.com/api/v1/"
+        // }
     },
     "network.previewnet": {
         proxy: "https://grpc-web.previewnet.myhbarwallet.com",
@@ -58,9 +59,10 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
         node: { shard: 0, realm: 0, node: 3 },
         name: NetworkName.PREVIEW,
         bridge: {
-            routerContractAddress: "0x4c08D852c710163a4e0Afe516558c5332D9dc7Dd",
-            bridgeAccount: "0.0.30739",
-            validator: "http://35.234.123.113/api/v1/",
+            routerContractAddress: "0xCd54bcdC4C13a4E559260c20c3229B6E6Af38ed4",
+            bridgeAccount: "0.0.2571",
+            serviceFee: 10000,
+            validator: "http://localhost:6200/api/v1/",
             etherscanTxUrl: "https://ropsten.etherscan.io/tx/",
             infuraApiUrl: "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9",
             ethereumChainId: "0x3",

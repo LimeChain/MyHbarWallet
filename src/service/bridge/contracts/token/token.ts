@@ -1,30 +1,38 @@
 import Web3 from "web3";
-import { Contract } from "web3-eth-contract";
-import { BigNumber } from "bignumber.js";
+import Contract from "web3-eth-contract";
 
 import { TokenABI } from "../abis";
+import { InfuraProviderService } from "../../provider/infura-provider";
 
 // TokenService wraps a contract instance of the WrappedToken contract
-export class TokenService {
-    private static instance: TokenService;
-
-    private contract: Contract;
-
-    constructor(address: string, provider: Web3) {
-        this.contract = new provider.eth.Contract(TokenABI, address);
+export class TokenService extends InfuraProviderService {
+    public constructor() {
+        super();
+        Contract.setProvider(this.getProvider());
     }
-
     // Read operations
 
-    public balanceOf(address: string): Promise<BigNumber> {
-        return this.contract.methods.balanceOf(address).call();
+    public balanceOf(contractAddress: string, address: string): Promise<string> {
+        const tokenContract = new this.web3.eth.Contract(TokenABI, contractAddress);
+
+        return tokenContract.methods.balanceOf(address).call();
     }
 
-    // Write operations
+    public async getPermitData(contractAddress: string, ownerAddress: string): Promise<any> {
+        const contract = new Contract(TokenABI, contractAddress);
 
-    public approve(address: string, amount: BigNumber, options: any = null): Promise<any> {
-        return this.contract.methods
-            .approve(address, amount)
-            .send(options);
+        let promises = [];
+
+        promises.push(contract.methods.name().call());
+        promises.push(contract.methods.controller().call());
+        promises.push(contract.methods.nonces(ownerAddress).call());
+
+        promises = await Promise.all(promises);
+
+        return {
+            name: promises[ 0 ],
+            controller: promises[ 1 ],
+            nonce: promises[ 2 ]
+        };
     }
 }

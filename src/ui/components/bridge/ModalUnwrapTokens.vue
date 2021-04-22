@@ -74,7 +74,7 @@ export default defineComponent({
 
         function handleDeposit(): void {
             if (!props.state?.depositBusy) {
-                // context.emit("deposit");
+                context.emit("deposit");
             }
         }
 

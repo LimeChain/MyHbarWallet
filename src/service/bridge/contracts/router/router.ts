@@ -1,5 +1,4 @@
 import Web3 from "web3";
-import { WebsocketProvider } from "web3-core";
 import { toUtf8 } from "web3-utils";
 import { Contract } from "web3-eth-contract";
 import { BigNumber } from "bignumber.js";
@@ -14,9 +13,8 @@ export class RouterService extends InfuraProviderService {
 
     public constructor() {
         super();
-        const web3 = new Web3(this.getProvider());
 
-        this.contract = new web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
+        this.contract = new this.web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
         this.contract.setProvider(this.getProvider());
     }
 
@@ -48,30 +46,30 @@ export class RouterService extends InfuraProviderService {
     }
 
     // Returns an array of all wrapped assets {address, symbols}
-    public async getWrappedAssets(): Promise<any> {
+    public async getWrappedAssets(): Promise<any[]> {
         const tokensCount = await this.wrappedAssetsCount();
 
-        console.log(tokensCount);
         const assets = [];
         for (let i = 0; i < Number(tokensCount); i++) {
-            assets.push(this.getWrappedAssetAndSymbols(i));
+            assets.push(this.getWrappedAsset(i));
         }
 
         return Promise.all(assets);
     }
 
-    public async getWrappedAssetAndSymbols(index: number): Promise<any> {
+    public async getWrappedAsset(index: number): Promise<any> {
         const address = await this.wrappedAssetAt(index);
-        console.log(address);
         const web3 = new Web3(this.getProvider());
         const wrappedAssetContract = new web3.eth.Contract(TokenABI, address);
         wrappedAssetContract.setProvider(this.getProvider());
 
-        const symbols = await wrappedAssetContract.methods.symbols().call();
+        const symbol = await wrappedAssetContract.methods.symbol().call();
+        const decimals = await wrappedAssetContract.methods.decimals().call();
 
         return {
             address,
-            symbols
+            symbol,
+            decimals
         };
     }
 

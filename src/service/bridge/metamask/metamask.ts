@@ -49,9 +49,11 @@ export class MetamaskService {
             this.metamaskProvider.sendAsync({ method, params, from }, (err: any, result: any) => {
                 if (err) {
                     reject(err);
+                    return;
                 }
                 if (result.error) {
                     reject(result.error);
+                    return;
                 }
 
                 resolve(splitSignature(result.result));
@@ -79,12 +81,19 @@ export class MetamaskService {
             .on("error", handleError);
     }
 
-    public async burnWithPermit(contractAddress: string, account: string, amount: BigNumber, deadline: number, v: number, r: any, s: any): Promise<any> {
+    public async burnWithPermit(contractAddress: string, account: string, amount: BigNumber, deadline: number, v: number, r: any, s: any,
+        handleTransactionHash: any,
+        handleReceipt: any,
+        handleError: any): Promise<any> {
         const options = { from: this.selectedAddress() };
 
         const contract = new this.web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
+
         return contract.methods
             .burnWithPermit(contractAddress, account, amount, deadline, v, r, s)
-            .send(options);
+            .send(options)
+            .on("transactionHash", handleTransactionHash)
+            .on("receipt", handleReceipt)
+            .on("error", handleError);
     }
 }

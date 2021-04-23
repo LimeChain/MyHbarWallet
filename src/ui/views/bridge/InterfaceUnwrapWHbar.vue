@@ -68,7 +68,7 @@
             @dismiss="handleModalSuccessDismiss"
         >
             <div class="success">
-                <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.ethAddress}}</strong></p>
+                <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.accountString}}</strong></p>
                 <div class="transactions-list">
                     <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
                     <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.deposit.transaction")}}
@@ -109,7 +109,7 @@ import { Permit, Domain, permitData } from "../../../service/bridge/contracts/pe
 import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
 import Notice from "../../components/Notice.vue";
 import { actions, getters } from "../../store";
-import { txData } from "../../../service/hedera-validator";
+import { eventTx } from "../../../service/hedera-validator";
 import Select from "../../components/Select.vue";
 import ModalUnwrapTokens, { State as ModalUnwrapTokensState } from "../../components/bridge/ModalUnwrapTokens.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
@@ -134,8 +134,6 @@ interface State {
     transactionId: string;
     modalSuccessState: ModalSuccessState;
     modalUnWrapTokensState: ModalUnwrapTokensState;
-    ethAddress: string | null;
-    ethAddressErrorMessage: string | null;
     gasPrice: string;
     txFee: string;
     serviceFee: string;
@@ -205,8 +203,6 @@ export default defineComponent({
                 serviceFee: "",
                 totalToReceive: ""
             },
-            ethAddress: "",
-            ethAddressErrorMessage: "",
             gasPrice: "",
             txFee: "",
             serviceFee: "",
@@ -301,26 +297,6 @@ export default defineComponent({
 
         const isMetamaskConnected = computed(() => state.metamask);
 
-        const scaleFactor = computed(() => {
-            const decimals = tokens.value!.filter(
-                (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.tokenId.toString()
-            )[ 0 ].decimals;
-
-            return new BigNumber(
-                Math.pow(10, decimals)
-            );
-        });
-
-        function validateTokenBalance(amount: BigNumber): boolean {
-            const adjustedAmount = amount.multipliedBy(scaleFactor.value);
-            if (tokens.value != null) {
-                return tokens.value.filter(
-                    (token) => token.tokenId.toString() === state.bridgeTokens?.get(state.asset)?.tokenId.toString()
-                )[ 0 ].balance.isGreaterThan(adjustedAmount);
-            }
-            return false;
-        }
-
         const isSelectedAssetValid = computed(() => {
             if (state.assetSelectionError) {
                 return false;
@@ -336,18 +312,6 @@ export default defineComponent({
             }
 
             return [];
-        });
-
-        const isTokenAmountValid = computed(() => {
-            if (state.amount) {
-                const bigAmount = new BigNumber(state.amount);
-                return (
-                    !bigAmount.isNaN() &&
-                    bigAmount.isGreaterThan(new BigNumber(0)) &&
-                    validateTokenBalance(bigAmount)
-                );
-            }
-            return false;
         });
 
         async function handleAmount(amount: string): Promise<boolean> {
@@ -389,6 +353,9 @@ export default defineComponent({
             state.modalUnWrapTokensState.serviceFee = serviceFee.toString();
             state.modalUnWrapTokensState.totalToReceive = state.totalToReceive;
             state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.deposit.notice", { amount: state.amount?.toString(), asset: state.asset }).toString();
+            state.modalUnWrapTokensState.depositBusy = false;
+            state.modalUnWrapTokensState.depositDisabled = false;
+            state.modalUnWrapTokensState.depositCompleted = false;
             state.modalUnWrapTokensState.isOpen = true;
         }
 
@@ -456,19 +423,17 @@ export default defineComponent({
             state.assetSelectionError = "";
         }
 
-        async function visualizeSuccessModal(receipt: any): Promise<void> {
-            state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}${state.transactionId}`;
-            state.ethereumTransaction = `${getters.currentNetwork().bridge?.etherscanTxUrl}${receipt.transactionHash}`;
-
+        async function visualizeSuccessModal(): Promise<void> {
             await actions.refreshBalancesAndRate();
             state.modalUnWrapTokensState.isOpen = false;
             state.modalSuccessState.isOpen = true;
             state.isBusy = false;
         }
 
-        async function handleModalSuccessDismiss(error: any, receipt: any): Promise<void> {
+        async function handleModalSuccessDismiss(error: any, receipt: any = null): Promise<void> {
             if (receipt) {
-                visualizeSuccessModal(receipt.transactionHash);
+                state.ethereumTransaction = receipt.TransactionHash;
+                visualizeSuccessModal();
                 return;
             }
 
@@ -476,10 +441,14 @@ export default defineComponent({
             state.isBusy = false;
             state.amount = "";
             state.memo = "";
+            state.account = null;
+            state.accountString = "";
+            (idInput.value! as IdInputElement).clear();
             state.serviceFee = "";
             state.ethereumTransaction = null;
             state.showEthMessage = false;
             state.assetBalance = await getBalance();
+            state.hederaExplorerTx = "";
             state.modalUnWrapTokensState = {
                 isOpen: false,
                 isBusy: false,
@@ -495,31 +464,55 @@ export default defineComponent({
             };
         }
 
-        async function handleValidatorTransactionData(transactionId: string): Promise<void> {
+        async function handleBlockConfirmations(receipt: any): Promise<void> {
+            const targetBlock = receipt.blockNumber + getters.currentNetwork().bridge?.blockConfirmations;
             clearInterval(transactionInterval);
             transactionInterval = setInterval(async() => {
-                const transactionData = await txData(transactionId);
-                if (transactionData.majority === true) {
-                    state.transactionData = transactionData;
-                    state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.notice", { amount: state.totalToReceive, asset: state.asset }).toString();
-                    state.modalUnWrapTokensState.depositBusy = false;
-                    state.modalUnWrapTokensState.depositCompleted = true;
+                const latestBlock = await state.tokenService?.getLatestBlock()!;
+                if (latestBlock >= targetBlock) {
+                    const latestReceipt = await state.tokenService?.getTransactionReceipt(receipt.transactionHash);
+                    if (!latestReceipt) {
+                        state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.networkReorganised").toString();
+                        return;
+                    }
+
+                    if (latestReceipt.blockNumber !== receipt.blockNumber) {
+                        state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.networkReorganised").toString();
+                        return;
+                    }
+
                     clearInterval(transactionInterval);
+                    handleHederaTxRetrieval(`${receipt.transactionHash}-${receipt.events.Burn.logIndex}`);
+                }
+            }, 5000);
+        }
+
+        async function handleHederaTxRetrieval(eventID: string): Promise<void> {
+            clearInterval(transactionInterval);
+            transactionInterval = setInterval(async() => {
+                const txId = await eventTx(eventID);
+                if (txId) {
+                    state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}transactions/${txId}`;
+                    clearInterval(transactionInterval);
+                    visualizeSuccessModal();
                 }
             }, 5000);
         }
 
         async function handleDeposit(): Promise<void> {
-            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
+            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.metamaskConfirmation").toString();
             state.modalUnWrapTokensState.depositBusy = true;
             const asset = state.bridgeTokens?.get(state.asset);
 
-            const deadline = oneHourDeadline(await state.routerService!.getLatestBlockTimestamp());
-            const amountBn = new BigNumber(state.amount!).multipliedBy(10 ** asset.decimals);
-            const data = await unsignedData(asset.address, amountBn.toNumber(), deadline);
-            const signature = await state.metamask!.signTypedV4Data(data);
-
-            await burnWithPermit(asset.address, state.accountString!, amountBn, deadline, signature);
+            try {
+                const deadline = oneHourDeadline(await state.routerService!.getLatestBlockTimestamp());
+                const amountBn = new BigNumber(state.amount!).multipliedBy(10 ** asset.decimals);
+                const data = await unsignedData(asset.address, amountBn.toNumber(), deadline);
+                const signature = await state.metamask!.signTypedV4Data(data);
+                await burnWithPermit(asset.address, state.accountString!, amountBn, deadline, signature);
+            } catch (error) {
+                handleModalSuccessDismiss(error);
+            }
         }
 
         async function burnWithPermit(contractAddress: string, account: string, amount: BigNumber, deadline: number, signature: any): Promise<void> {
@@ -533,7 +526,10 @@ export default defineComponent({
                     deadline,
                     signature.v,
                     signature.r,
-                    signature.s
+                    signature.s,
+                    handleTransactionHash,
+                    handleReceipt,
+                    handleModalSuccessDismiss
                 );
             } catch (error) {
                 console.log(error);
@@ -560,6 +556,16 @@ export default defineComponent({
             };
 
             return permitData(domain, message);
+        }
+
+        function handleTransactionHash(transactionHash: string): void {
+            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
+            state.ethereumTransaction = `${getters.currentNetwork().bridge?.etherscanTxUrl}${transactionHash}`;
+        }
+
+        function handleReceipt(receipt: any): void {
+            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.waitForBlockConfirmations").toString();
+            handleBlockConfirmations(receipt);
         }
 
         async function getBalance(): Promise<string> {

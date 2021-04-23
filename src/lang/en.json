@@ -304,6 +304,8 @@
     "interfaceWrapToken.transferAmount": "Token Transfer Amount",
     "interfaceUnwrapWHbar.title": "Transfer to Hedera",
     "interfaceUnWrapHbar.deposit.notice": "Deposit <strong>{amount} {asset}</strong> for transferring to Hedera",
+    "interfaceUnWrapHbar.waitForBlockConfirmations": "Waiting for block confirmations...",
+    "interfaceUnWrapHbar.networkReorganised": "Network has been reorganised, please check transaction from Metamask",
     "interfaceUnwrapWHbar.assetInfo": "The selected asset to be transferred. Receiving address will get unwrapped version of the asset on the Hedera network.",
     "interfaceUnwrapWHbar.approve.continue": "Approve",
     "interfaceUnwrapWHbar.burn.continue": "Unwrap",

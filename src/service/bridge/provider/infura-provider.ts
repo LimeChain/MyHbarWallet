@@ -23,4 +23,12 @@ export class InfuraProviderService {
 
         return block.timestamp;
     }
+
+    public async getLatestBlock(): Promise<number> {
+        return this.web3.eth.getBlockNumber();
+    }
+
+    public async getTransactionReceipt(transactionHash: string): Promise<any> {
+        return this.web3.eth.getTransactionReceipt(transactionHash);
+    }
 }

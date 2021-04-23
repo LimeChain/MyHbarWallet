@@ -126,20 +126,12 @@ interface State {
     account: AccountId | null;
     accountString: string | null;
     accountValid: boolean | null;
-    memo: string | null;
     isBusy: boolean;
     idErrorMessage: string | null;
     amountErrorMessage: string | null;
     idValid: boolean;
-    transactionId: string;
     modalSuccessState: ModalSuccessState;
     modalUnWrapTokensState: ModalUnwrapTokensState;
-    gasPrice: string;
-    txFee: string;
-    serviceFee: string;
-    ethereumTransaction: any;
-    showEthMessage: boolean;
-    wrapAmount: string;
     asset: string;
     selectedAsset: string;
     assetSelectionError: string;
@@ -150,7 +142,6 @@ interface State {
     contractTokens: any[];
     assetBalance: string;
     metamask: MetamaskService | null;
-    transactionData: any;
     totalToReceive: string;
     hederaExplorerTx: string;
 }
@@ -180,12 +171,10 @@ export default defineComponent({
             account: null,
             accountString: "",
             accountValid: null,
-            memo: "",
             isBusy: false,
             idErrorMessage: "",
             amountErrorMessage: "",
             idValid: false,
-            transactionId: "",
             modalSuccessState: {
                 isOpen: false,
                 hasAction: false
@@ -203,12 +192,6 @@ export default defineComponent({
                 serviceFee: "",
                 totalToReceive: ""
             },
-            gasPrice: "",
-            txFee: "",
-            serviceFee: "",
-            ethereumTransaction: null,
-            showEthMessage: false,
-            wrapAmount: "",
             asset: "",
             selectedAsset: "",
             assetSelectionError: "",
@@ -218,7 +201,6 @@ export default defineComponent({
             contractTokens: [],
             assetBalance: "0",
             metamask: null,
-            transactionData: null,
             totalToReceive: "",
             hederaExplorerTx: "",
             tokenService: null
@@ -273,8 +255,6 @@ export default defineComponent({
         function handleAccountValid(valid: boolean): void {
             state.accountValid = valid;
         }
-
-        const tokens = computed(() => getters.currentUserTokens() || []);
 
         const isAmountValid = computed(() => {
             if (state.amount) {
@@ -432,7 +412,6 @@ export default defineComponent({
 
         async function handleModalSuccessDismiss(error: any, receipt: any = null): Promise<void> {
             if (receipt) {
-                state.ethereumTransaction = receipt.TransactionHash;
                 visualizeSuccessModal();
                 return;
             }
@@ -440,13 +419,9 @@ export default defineComponent({
             state.modalSuccessState.isOpen = false;
             state.isBusy = false;
             state.amount = "";
-            state.memo = "";
             state.account = null;
             state.accountString = "";
             (idInput.value! as IdInputElement).clear();
-            state.serviceFee = "";
-            state.ethereumTransaction = null;
-            state.showEthMessage = false;
             state.assetBalance = await getBalance();
             state.hederaExplorerTx = "";
             state.modalUnWrapTokensState = {
@@ -560,7 +535,6 @@ export default defineComponent({
 
         function handleTransactionHash(transactionHash: string): void {
             state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
-            state.ethereumTransaction = `${getters.currentNetwork().bridge?.etherscanTxUrl}${transactionHash}`;
         }
 
         function handleReceipt(receipt: any): void {

@@ -63,13 +63,16 @@ export class RouterService extends InfuraProviderService {
         const wrappedAssetContract = new web3.eth.Contract(TokenABI, address);
         wrappedAssetContract.setProvider(this.getProvider());
 
+        const nativeAsset = toUtf8(await this.wrappedToNative(address));
+
         const symbol = await wrappedAssetContract.methods.symbol().call();
         const decimals = await wrappedAssetContract.methods.decimals().call();
 
         return {
             address,
             symbol,
-            decimals
+            decimals,
+            nativeAsset
         };
     }
 

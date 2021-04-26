@@ -23,7 +23,7 @@
         <IDInput
             ref="idInput"
             class="account"
-            :error="state.accountError"
+            :error="state.idErrorMessage"
             :valid="state.accountValid"
             :label="$t('common.toAccount')"
             show-validation
@@ -98,7 +98,7 @@
 <script lang="ts">
 import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
-import { AccountId } from "@hashgraph/sdk";
+import { AccountId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
 import { mdiLaunch, mdiHelpCircleOutline } from "@mdi/js";
 
@@ -120,6 +120,8 @@ import Select from "../../components/Select.vue";
 import ModalUnwrapTokens, { State as ModalUnwrapTokensState } from "../../components/bridge/ModalUnwrapTokens.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
+import { getTokens } from "../../../service/hedera";
+import { Asset } from "../../../domain/transfer";
 
 let transactionInterval: any = null;
 
@@ -322,9 +324,37 @@ export default defineComponent({
             return true;
         }
 
+        async function isReceiverAssociated(): Promise<boolean> {
+            const nativeAsset = state.bridgeTokens?.get(state.asset).nativeAsset!;
+            if (nativeAsset.toLowerCase() === Asset.Hbar.toLowerCase()) {
+                return true;
+            }
+
+            try {
+                const client = getters.currentUser().session.client as Client;
+                const tokens = await getTokens(state.account!, client as Client);
+                console.log(tokens);
+
+                for (const token of tokens!) {
+                    if (token.tokenId.toString() === nativeAsset) {
+                        return true;
+                    }
+                }
+            } catch (error) {
+                handleError(error);
+            }
+
+            return false;
+        }
+
         async function handleShowModalUnWrapTokens(): Promise<void> {
             const isValidAmount = await handleAmount(state.amount!);
             if (!isValidAmount) {
+                return;
+            }
+            const validAccount = await isReceiverAssociated();
+            if (!validAccount) {
+                state.idErrorMessage = context.root.$t("common.error.tokenNotAssociated").toString();
                 return;
             }
             const contractServiceFee = getters.currentNetwork().bridge?.serviceFee!;
@@ -394,6 +424,53 @@ export default defineComponent({
             // );
 
             boundInput(event, value, state.amount);
+        }
+
+        async function handleError(error: { status: { code: number }; name: string }): Promise<void> {
+            // eslint-disable-next-line require-atomic-updates
+            state.idErrorMessage = "";
+            // eslint-disable-next-line require-atomic-updates
+            state.amountErrorMessage = "";
+
+            const { HederaStatusError, Status } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
+
+            if (error instanceof HederaStatusError) {
+                const errorMessage = (await actions.handleHederaError({
+                    error,
+                    showAlert: false
+                })).message;
+
+                // Small duplication of effort to assign errorMessage to correct TextInput
+                switch (error.status.code) {
+                    case Status.InvalidAccountId.code:
+                    case Status.AccountRepeatedInAccountAmounts.code:
+                        state.idErrorMessage = errorMessage;
+                        break;
+                    case Status.InsufficientAccountBalance.code:
+                        state.amountErrorMessage = errorMessage;
+                        break;
+                    default:
+                        if (errorMessage !== "") {
+                            actions.alert({
+                                message: errorMessage,
+                                level: "warn"
+                            });
+                        } else {
+                            throw error; // Unhandled Error Modal will open
+                        }
+                }
+            } else if (
+                error.name === "TransportStatusError" &&
+                    getters.currentUser().wallet.getLoginMethod() ===
+                        LoginMethod.Ledger
+            ) {
+                actions.handleLedgerError({
+                    error,
+                    showAlert: true
+                });
+            } else {
+                throw error;
+            }
         }
 
         async function handleSelectChange(changedTo: string): Promise<void> {

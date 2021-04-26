@@ -70,13 +70,13 @@
                 <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.ethAddress}}</strong></p>
                 <div class="transactions-list">
                     <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
-                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.deposit.transaction")}}
+                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.hedera.transaction")}}
                         <MaterialDesignIcon
                                 class="launch-icon"
                                 :icon="mdiLaunch"
                         />
                     </a><br>
-                    <a :href="state.ethereumTransaction" target="_blank">{{$t("interfaceWrapHbar.claim.transaction")}}
+                    <a :href="state.ethereumTransaction" target="_blank">{{$t("interfaceWrapHbar.ethereum.transaction")}}
                         <MaterialDesignIcon
                                 class="launch-icon"
                                 :icon="mdiLaunch"

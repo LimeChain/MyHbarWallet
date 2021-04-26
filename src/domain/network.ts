@@ -60,8 +60,8 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
         node: { shard: 0, realm: 0, node: 3 },
         name: NetworkName.PREVIEW,
         bridge: {
-            routerContractAddress: "0xCd54bcdC4C13a4E559260c20c3229B6E6Af38ed4",
-            bridgeAccount: "0.0.2571",
+            routerContractAddress: "0x76185748e6d3A1113E95EF7015E1F76E23E6d163",
+            bridgeAccount: "0.0.10226",
             serviceFee: 10000,
             validator: "http://localhost:6200/api/v1/",
             etherscanTxUrl: "https://ropsten.etherscan.io/tx/",

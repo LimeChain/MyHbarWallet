@@ -1,6 +1,6 @@
 <template>
     <div id="unwrapHbar">
-    <InterfaceForm :title="$t('interfaceUnwrapWHbar.title')" :description="$t('interfaceWrapHbar.description')">
+    <InterfaceForm :title="$t('interfaceUnwrapWHbar.title')" :description="$t('interfaceUnWrapHbar.description')">
         <span class="connect-wallet-bar">
             <ConnectWalletButton
                 :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : 'Connect Wallet'"
@@ -71,7 +71,13 @@
                 <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.accountString}}</strong></p>
                 <div class="transactions-list">
                     <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
-                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.deposit.transaction")}}
+                    <a :href="state.ethereumExplorerTx" target="_blank">{{$t("interfaceWrapHbar.ethereum.transaction")}}
+                        <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                        />
+                    </a><br>
+                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.hedera.transaction")}}
                         <MaterialDesignIcon
                                 class="launch-icon"
                                 :icon="mdiLaunch"
@@ -100,7 +106,7 @@ import TextInput from "../../components/TextInput.vue";
 import InterfaceForm from "../../components/InterfaceForm.vue";
 import Button from "../../components/Button.vue";
 import IDInput, { IdInputElement } from "../../components/IDInput.vue";
-import { getValueOfUnit, Unit } from "../../../service/units";
+import { Unit } from "../../../service/units";
 import { RouterService } from "../../../service/bridge/contracts/router/router";
 import { TokenService } from "../../../service/bridge/contracts/token/token";
 import { InfuraProviderService } from "../../../service/bridge/provider/infura-provider";
@@ -115,9 +121,7 @@ import ModalUnwrapTokens, { State as ModalUnwrapTokensState } from "../../compon
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
 
-let web3: any;
 let transactionInterval: any = null;
-declare const window: any;
 
 // Defined in vue.config.js.
 
@@ -144,6 +148,7 @@ interface State {
     metamask: MetamaskService | null;
     totalToReceive: string;
     hederaExplorerTx: string;
+    ethereumExplorerTx: string;
 }
 
 function oneHourDeadline(currentTimestamp: number): number {
@@ -203,6 +208,7 @@ export default defineComponent({
             metamask: null,
             totalToReceive: "",
             hederaExplorerTx: "",
+            ethereumExplorerTx: "",
             tokenService: null
         });
 
@@ -424,6 +430,7 @@ export default defineComponent({
             (idInput.value! as IdInputElement).clear();
             state.assetBalance = await getBalance();
             state.hederaExplorerTx = "";
+            state.ethereumExplorerTx = "";
             state.modalUnWrapTokensState = {
                 isOpen: false,
                 isBusy: false,
@@ -534,6 +541,7 @@ export default defineComponent({
         }
 
         function handleTransactionHash(transactionHash: string): void {
+            state.ethereumExplorerTx = `${getters.currentNetwork().bridge?.etherscanTxUrl}${transactionHash}`;
             state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
         }
 

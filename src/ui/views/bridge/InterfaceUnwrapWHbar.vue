@@ -333,7 +333,6 @@ export default defineComponent({
             try {
                 const client = getters.currentUser().session.client as Client;
                 const tokens = await getTokens(state.account!, client as Client);
-                console.log(tokens);
 
                 for (const token of tokens!) {
                     if (token.tokenId.toString() === nativeAsset) {

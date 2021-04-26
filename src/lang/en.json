@@ -313,7 +313,7 @@
     "interfaceUnwrapWHbar.approveAmount": "Approve amount",
     "interfaceUnwrapWHbar.unwrapAmount": "Unwrap amount",
     "interfaceUnwrapWHbar.unwrapWHbar": "Unwrap WHbar | Unwrap {count} WHbar | Unwrap {count} WHbars",
-    "interfaceUnwrapWHbar.tokenNotAssociated": "Asset {wrappedAsset} [{nativeAsset}] not associated with account",
+    "interfaceUnwrapWHbar.tokenNotAssociated": "Asset {wrappedAsset} ({nativeAsset}) not associated with account",
     "interfaceUnwrapWHbar.userDeniedAccess": "User denied account access!",
     "interfaceUnwrapWHbar.noWeb3Provider": "No Web3 Provider! Please install Metamask!",
     "interfaceUnwrapWHBar.invalidChainId": "Invalid selected Metamask chain! It should be {network}!",

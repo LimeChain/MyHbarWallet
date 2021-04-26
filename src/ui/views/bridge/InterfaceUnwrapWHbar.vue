@@ -342,6 +342,7 @@ export default defineComponent({
             } catch (error) {
                 handleError(error);
             }
+            state.idErrorMessage = context.root.$t("interfaceUnwrapWHbar.tokenNotAssociated", { wrappedAsset: state.asset, nativeAsset }).toString();
 
             return false;
         }
@@ -351,11 +352,12 @@ export default defineComponent({
             if (!isValidAmount) {
                 return;
             }
+
             const validAccount = await isReceiverAssociated();
             if (!validAccount) {
-                state.idErrorMessage = context.root.$t("common.error.tokenNotAssociated").toString();
                 return;
             }
+
             const contractServiceFee = getters.currentNetwork().bridge?.serviceFee!;
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);

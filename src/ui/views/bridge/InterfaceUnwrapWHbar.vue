@@ -99,7 +99,6 @@
 import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
 import { AccountId, Client } from "@hashgraph/sdk";
-import Web3 from "web3";
 import { mdiLaunch, mdiHelpCircleOutline } from "@mdi/js";
 
 import TextInput from "../../components/TextInput.vue";
@@ -122,6 +121,7 @@ import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
 import { getTokens } from "../../../service/hedera";
 import { Asset } from "../../../domain/transfer";
+import { bytesToHex } from "web3-utils";
 
 let transactionInterval: any = null;
 
@@ -569,19 +569,19 @@ export default defineComponent({
                 const amountBn = new BigNumber(state.amount!).multipliedBy(10 ** asset.decimals);
                 const data = await unsignedData(asset.address, amountBn.toNumber(), deadline);
                 const signature = await state.metamask!.signTypedV4Data(data);
-                await burnWithPermit(asset.address, state.accountString!, amountBn, deadline, signature);
+                await burnWithPermit(asset.address, state.account!._toProto().serializeBinary(), amountBn, deadline, signature);
             } catch (error) {
                 handleModalSuccessDismiss(error);
             }
         }
 
-        async function burnWithPermit(contractAddress: string, account: string, amount: BigNumber, deadline: number, signature: any): Promise<void> {
-            const bytesAccount = Web3.utils.fromAscii(account);
+        async function burnWithPermit(contractAddress: string, account: any, amount: BigNumber, deadline: number, signature: any): Promise<void> {
+            const hexAccount = bytesToHex(account);
 
             try {
                 await state.metamask?.burnWithPermit(
                     contractAddress,
-                    bytesAccount,
+                    hexAccount,
                     amount,
                     deadline,
                     signature.v,

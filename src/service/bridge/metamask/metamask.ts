@@ -3,6 +3,7 @@ import { BigNumber } from "bignumber.js";
 import { RouterABI } from "../contracts/abis";
 import { getters } from "../../../ui/store";
 import { splitSignature } from "@ethersproject/bytes";
+import { hexToNumber } from "web3-utils";
 
 declare let window: any;
 
@@ -29,14 +30,13 @@ export class MetamaskService {
             throw new Error("Metamask not found");
         }
 
-        if (this.metamaskProvider.chainId !== getters.currentNetwork().bridge?.ethereumChainId) {
+        if (hexToNumber(this.metamaskProvider.chainId).toString() !== getters.currentNetwork().bridge?.ethereumChainId) {
             throw new Error(`Invalid network selected. It should be ${getters.currentNetwork().bridge?.ethereumNetwork}`);
         }
     }
 
     public chainId(): number {
-        const chainId = this.metamaskProvider.chainId;
-        return chainId.startsWith("0x") ? Number(chainId.slice(2)) : Number(chainId);
+        return hexToNumber(this.metamaskProvider.chainId);
     }
 
     public async signTypedV4Data(msgParams: string): Promise<any> {
@@ -81,7 +81,7 @@ export class MetamaskService {
             .on("error", handleError);
     }
 
-    public async burnWithPermit(contractAddress: string, account: string, amount: BigNumber, deadline: number, v: number, r: any, s: any,
+    public async burnWithPermit(contractAddress: string, account: any, amount: BigNumber, deadline: number, v: number, r: any, s: any,
         handleTransactionHash: any,
         handleReceipt: any,
         handleError: any): Promise<any> {

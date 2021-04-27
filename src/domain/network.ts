@@ -60,14 +60,14 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
         node: { shard: 0, realm: 0, node: 3 },
         name: NetworkName.PREVIEW,
         bridge: {
-            routerContractAddress: "0x76185748e6d3A1113E95EF7015E1F76E23E6d163",
-            bridgeAccount: "0.0.10226",
+            routerContractAddress: "0x521dd459740f1de42C605EB3a96A10c1F4548DEb",
+            bridgeAccount: "0.0.12388",
             serviceFee: 10000,
             validator: "http://localhost:6200/api/v1/",
-            etherscanTxUrl: "https://ropsten.etherscan.io/tx/",
-            infuraApiUrl: "wss://ropsten.infura.io/ws/v3/41e87d933f3d489e8bb910eaec0948b9",
-            ethereumChainId: "0x3",
-            ethereumNetwork: "Ropsten",
+            etherscanTxUrl: "https://explorer-mumbai.maticvigil.com/tx/",
+            infuraApiUrl: "wss://ws-matic-mumbai.chainstacklabs.com",
+            ethereumChainId: "80001",
+            ethereumNetwork: "POLYGON",
             mirrorNodeUrl: "http://previewnet.mirrornode.hedera.com/api/v1/",
             blockConfirmations: 5
         }

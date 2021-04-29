@@ -60,10 +60,10 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
         node: { shard: 0, realm: 0, node: 3 },
         name: NetworkName.PREVIEW,
         bridge: {
-            routerContractAddress: "0x521dd459740f1de42C605EB3a96A10c1F4548DEb",
-            bridgeAccount: "0.0.12388",
+            routerContractAddress: "0xB797e097d24c7BdAA99A077501f503838D50A88E",
+            bridgeAccount: "0.0.14654",
             serviceFee: 10000,
-            validator: "http://localhost:6200/api/v1/",
+            validator: "http://34.66.212.7/api/v1/",
             etherscanTxUrl: "https://explorer-mumbai.maticvigil.com/tx/",
             infuraApiUrl: "wss://ws-matic-mumbai.chainstacklabs.com",
             ethereumChainId: "80001",

@@ -693,7 +693,7 @@ export default defineComponent({
             clearInterval(transactionInterval);
             transactionInterval = setInterval(async() => {
                 const transactionData = await txData(transactionId);
-                if (transactionData.majority === true) {
+                if (transactionData && transactionData.majority === true) {
                     state.transactionData = transactionData;
                     state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.notice", { amount: state.totalToReceive, asset: state.asset }).toString();
                     state.modalWrapTokensState.depositBusy = false;

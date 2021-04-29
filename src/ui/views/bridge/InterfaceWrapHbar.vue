@@ -707,7 +707,7 @@ export default defineComponent({
 
         async function getValidatorTransactionData(transactionId: string): Promise<void> {
             const transactionData = await txData(transactionId);
-            if (transactionData.majority === true) {
+            if (transactionData && transactionData.majority === true) {
                 state.transactionData = transactionData;
             }
         }

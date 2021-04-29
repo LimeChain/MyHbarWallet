@@ -28,9 +28,6 @@
                 >
             </div>
             <div class="spacer" />
-            <div class="pending-transaction-button">
-                <PendingTransferButton label="Pending Bridge Transfer" />
-            </div>
             <div class="links">
                 <router-link
                     v-if="!isInterface"
@@ -424,8 +421,4 @@ export default defineComponent({
     margin-inline-start: 5px;
 }
 
-.pending-transaction-button{
-    display: flex;
-    align-items: center;
-}
 </style>

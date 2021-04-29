@@ -1,8 +1,8 @@
 <template>
     <Button
         :compact="true"
-        :label="props.walletAddress"
-        @click="connectToMetamask"
+        :label="props.label"
+        @click="openPendingTransfersModal"
     />
 </template>
 
@@ -13,24 +13,24 @@ import { defineComponent, SetupContext, PropType } from "@vue/composition-api";
 // export interface State {}
 
 export default defineComponent({
-    name: "ConnectWalletButton",
+    name: "ViewPendingTransfersButton",
     components: { Button },
     props: {
         state: Object as PropType<{}>,
-        walletAddress: { type: String }
+        label: { type: String, required: true }
     },
     model: {
         prop: "state",
-        event: "connect"
+        event: "click"
     },
     setup(props, context: SetupContext): object {
-        function connectToMetamask(): void {
-            context.emit("connect");
+        function openPendingTransfersModal(): void {
+            context.emit("openPendingTransfersModal");
         }
 
         return {
             props,
-            connectToMetamask
+            openPendingTransfersModal
         };
     }
 });
@@ -41,11 +41,7 @@ button{
     font-size: 12px;
     inset-inline-end: 10px;
     min-width: 10px;
-    padding: 8px 12px;
-    /* position: relative !important;
-    top: 30px;
     right: 0 !important;
-    z-index: 1; */
 }
 
 </style>

@@ -1,9 +1,20 @@
 <template>
     <div id="wrapHbar">
     <InterfaceForm :title="$t('interfaceWrapHbar.title')" :description="$t('interfaceWrapHbar.description')">
+         <span class="pending-transfer-bar">
+            <span class="pending-transfer-text">
+                {{ $t('interfaceWrapHbar.pendingTransferNotice') }}
+            </span>
+             <button class="pending-transfer-button">
+                <ViewPendingTransfersButton
+                    :label="$t('interfaceWrapHbar.claim')"
+                    @openPendingTransfersModal="handleViewPendingTransfers"
+                />
+            </button>
+        </span>
         <span class="connect-wallet-bar">
             <ConnectWalletButton
-                :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : 'Connect Wallet'"
+                :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : $t('interfaceWrapHbar.connectWallet')"
                 @connect="handleConnectToMetamask" />
         </span>
         <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
@@ -48,12 +59,6 @@
         </div>
 
         <template v-slot:footer>
-            <!-- <Button
-                :busy="state.isBusy"
-                :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid"
-                :label="$t('interfaceWrapHbar.transferButton')"
-                @click="handleShowSummary"
-            /> -->
             <Button
                 :busy="state.isBusy"
                 :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid || !isMetamaskConnected"
@@ -91,6 +96,13 @@
             @deposit="handleDeposit"
             @claim="handleClaim"
         />
+
+        <ModalPendingTransfer
+            v-model="state.modalPendingTransfer"
+            @changeSelectedPendingTransaction="handleChangeSelectedPendingTransaction"
+            @connectMetamask="handleConnectToMetamask"
+            @claim="handleClaim"
+        />
     </InterfaceForm>
     </div>
 </template>
@@ -121,7 +133,9 @@ import { tokenTransfer } from "../../../service/bridge/hedera/hedera";
 import { MirrorNodeToken } from "src/domain/token";
 import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components/bridge/ModalWrapTokens.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
+import ViewPendingTransfersButton from "../../components/bridge/ViewPendingTransfersButton.vue";
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
+import ModalPendingTransfer, { State as ModalPendingTransferState } from "../../components/bridge/ModalPendingTransfer.vue";
 
 let web3: any;
 let transactionInterval: any = null;
@@ -141,6 +155,7 @@ interface State {
     transactionId: string;
     modalSuccessState: ModalSuccessState;
     modalWrapTokensState: ModalWrapTokensState;
+    modalPendingTransfer: ModalPendingTransferState;
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
     serviceFee: string;
@@ -187,7 +202,9 @@ export default defineComponent({
         IDInput,
         Notice,
         Select,
-        MaterialDesignIcon
+        MaterialDesignIcon,
+        ModalPendingTransfer,
+        ViewPendingTransfersButton
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
@@ -222,6 +239,23 @@ export default defineComponent({
                 hederaNetworkFee: "0.1",
                 ethereumNetworkFee: ""
             },
+            modalPendingTransfer: {
+                isOpen: false,
+                isBusy: false,
+                noticeText: context.root.$t("interfaceWrapHbar.claim.notice").toString(),
+                claimDisabled: false,
+                claimBusy: false,
+                asset: "",
+                receiver: "",
+                amount: "",
+                serviceFee: "",
+                totalToReceive: "",
+                pendingTransactions: [],
+                transactionIds: [],
+                selectedTransaction: "",
+                depositCompleted: true,
+                metamask: null
+            },
             ethAddress: "",
             ethAddressErrorMessage: "",
             serviceFee: "",
@@ -250,26 +284,12 @@ export default defineComponent({
                     actions.refreshBalancesAndRate();
                 }
             }
-            localStorage.pendingTransferToEthereum = false;
-            if (localStorage.pendingTransferToEthereum) {
-                // Update state variables
-                state.modalWrapTokensState = {
-                    isOpen: false,
-                    isBusy: false,
-                    noticeText: "Transfer in progress",
-                    depositDisabled: false,
-                    claimDisabled: true,
-                    depositBusy: false,
-                    claimBusy: false,
-                    depositCompleted: false,
-                    asset: "",
-                    receiver: "",
-                    amount: "",
-                    serviceFee: "",
-                    totalToReceive: "",
-                    hederaNetworkFee: "0.1",
-                    ethereumNetworkFee: ""
-                };
+            const transactions = localStorage.getItem("transactions");
+            if (transactions) {
+                state.modalPendingTransfer.pendingTransactions = JSON.parse(transactions);
+                state.modalPendingTransfer.transactionIds = state.modalPendingTransfer.pendingTransactions.map((t: any) => t.transactionId);
+                state.modalPendingTransfer.selectedTransaction = state.modalPendingTransfer.transactionIds[ 0 ];
+                handleChangeSelectedPendingTransaction({ selectedTransaction: [ state.modalPendingTransfer.pendingTransactions[ 0 ] ]});
             }
         });
 
@@ -315,22 +335,13 @@ export default defineComponent({
         const isAmountValid = computed(() => {
             if (state.amount) {
                 return (
-                    new BigNumber(state.amount).isGreaterThan(new BigNumber(0)) && validateHbar(state.amount)
+                    new BigNumber(state.amount).isGreaterThan(new BigNumber(0)) && validateHbar(state.amount) && new BigNumber(state.amount).isLessThanOrEqualTo(new BigNumber(state.assetBalance))
                 );
             }
             return false;
         });
 
         const isMetamaskConnected = computed(() => state.metamask);
-
-        const isServiceFeeValid = computed(() => {
-            if (state.serviceFee) {
-                return (
-                    new BigNumber(state.serviceFee).isGreaterThan(new BigNumber(0)) && validateHbar(state.serviceFee)
-                );
-            }
-            return false;
-        });
 
         const isEthAddressValid = computed(() => {
             if (state.ethAddress) {
@@ -391,7 +402,6 @@ export default defineComponent({
                     assetsWithNameAndId.push(`${symbol} (${token.token_id})`);
                 });
                 return assetsWithNameAndId;
-                // return [ Asset.Hbar, ...bridgeTokens.value ];
             }
             state.assetBalance = getters.currentUserBalance()?.toString()!;
             return [ Asset.Hbar ];
@@ -445,10 +455,6 @@ export default defineComponent({
             return true;
         }
 
-        // Modal Fee Summary State TODO: Is this needed
-        const summaryAmount = computed(() => amount.value);
-        const summaryReceiver = computed(formatEthAddress);
-
         async function handleShowModalWrapTokens(): Promise<void> {
             if (!handleAmount(state.amount!)) {
                 return;
@@ -460,7 +466,7 @@ export default defineComponent({
 
             state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.deposit.notice", { amount: state.amount?.toString(), asset: state.asset }).toString();
             state.modalWrapTokensState.asset = state.asset;
-            state.modalWrapTokensState.receiver = summaryReceiver.value;
+            state.modalWrapTokensState.receiver = formatEthAddress();
             state.modalWrapTokensState.amount = state.amount?.toString()!;
             state.modalWrapTokensState.serviceFee = serviceFee.toString();
             state.modalWrapTokensState.totalToReceive = state.totalToReceive;
@@ -699,7 +705,17 @@ export default defineComponent({
             }, 5000);
         }
 
+        async function getValidatorTransactionData(transactionId: string): Promise<void> {
+            const transactionData = await txData(transactionId);
+            if (transactionData.majority === true) {
+                state.transactionData = transactionData;
+            }
+        }
+
         async function mint(transactionId: string, transactionData: any): Promise<void> {
+            if (!transactionData) {
+                await getValidatorTransactionData(transactionId);
+            }
             const bytesTransactionId = Web3.utils.fromAscii(transactionId);
             const signatures = [];
             for (const signature of transactionData.signatures) {
@@ -717,6 +733,8 @@ export default defineComponent({
                     handleModalSuccessDismiss);
             } catch (error) {
                 console.log(error);
+            } finally {
+                // Remove transaction from local storage
             }
         }
 
@@ -736,6 +754,31 @@ export default defineComponent({
             } catch (error) {
                 handleError(error);
             } finally {
+                // Save transaction to local storage (FIX: Probably not in finally)
+                const transactions = localStorage.getItem("transactions");
+                if (transactions) {
+                    const pendingTransactions = JSON.parse(transactions);
+                    pendingTransactions.push({
+                        transactionId: state.transactionId,
+                        asset: state.modalWrapTokensState.asset,
+                        amount: state.modalWrapTokensState.amount,
+                        receiver: state.ethAddress,
+                        serviceFee: state.modalWrapTokensState.serviceFee,
+                        totalToReceive: state.modalWrapTokensState.totalToReceive
+                    });
+                    localStorage.setItem("transactions", JSON.stringify(pendingTransactions));
+                } else {
+                    const pendingTransactions = [];
+                    pendingTransactions.push({
+                        transactionId: state.transactionId,
+                        asset: state.modalWrapTokensState.asset,
+                        amount: state.modalWrapTokensState.amount,
+                        receiver: state.ethAddress,
+                        serviceFee: state.modalWrapTokensState.serviceFee,
+                        totalToReceive: state.modalWrapTokensState.totalToReceive
+                    });
+                    localStorage.setItem("transactions", JSON.stringify(pendingTransactions));
+                }
                 state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForConfirmations").toString();
             }
         }
@@ -791,7 +834,6 @@ export default defineComponent({
         }
 
         function handleClaim(): void {
-            // props.state.claimBusy = true;
             state.modalWrapTokensState.claimBusy = true;
             state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.metamaskConfirmation").toString();
             mint(state.transactionId, state.transactionData);
@@ -808,6 +850,7 @@ export default defineComponent({
             const metamask = new MetamaskService();
             await metamask.initWeb3();
             state.metamask = metamask;
+            state.modalPendingTransfer.metamask = metamask;
             // state.metamaskAddress = metamask.selectedAddress();
             actions.alert({
                 message: "Metamask successfully connected",
@@ -815,11 +858,23 @@ export default defineComponent({
             });
         }
 
+        function handleChangeSelectedPendingTransaction(transaction: any): void {
+            state.modalPendingTransfer.amount = transaction.selectedTransaction[ 0 ].amount;
+            state.modalPendingTransfer.asset = transaction.selectedTransaction[ 0 ].asset;
+            state.ethAddress = transaction.selectedTransaction[ 0 ].receiver;
+            state.modalPendingTransfer.receiver = formatEthAddress();
+            state.modalPendingTransfer.serviceFee = transaction.selectedTransaction[ 0 ].serviceFee;
+            state.modalPendingTransfer.totalToReceive = transaction.selectedTransaction[ 0 ].totalToReceive;
+            state.modalPendingTransfer.noticeText = context.root.$t("interfaceWrapHbar.claim.notice", { amount: transaction.selectedTransaction[ 0 ].totalToReceive?.toString(), asset: transaction.selectedTransaction[ 0 ].asset }).toString();
+        }
+
+        function handleViewPendingTransfers(): void {
+            state.modalPendingTransfer.isOpen = true;
+        }
+
         return {
             amount,
             state,
-            summaryAmount,
-            summaryReceiver,
             isAmountValid,
             hbarSuffix: Unit.Hbar,
             tinybarSuffix: Unit.Tinybar,
@@ -839,12 +894,51 @@ export default defineComponent({
             handleDeposit,
             handleClaim,
             handleConnectToMetamask,
-            isMetamaskConnected
+            isMetamaskConnected,
+            handleChangeSelectedPendingTransaction,
+            handleViewPendingTransfers
         };
     }
 });
 </script>
 <style lang="postcss" scoped>
+.pending-transfer-bar{
+    background-color:  var(--color-sheer-peach);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    padding-left: 30px;
+    padding-right: 20px;
+    margin-bottom: 20px;
+}
+
+.pending-transfer-text{
+    color: var(--color-china-blue);
+    font-size: 14px;
+}
+
+.pending-transfer-button{
+    /* background: rgba(30, 147, 255, 0.1);
+    border-radius: 5px;
+    border: 1px solid rgba(30, 147, 255, 0.1);
+    color: #1E93FF;
+    font-size: 13px;
+    font-family: Roboto;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 15px;
+    outline: none;
+    padding: 5px;
+    position: relative;
+    user-select: none;
+    white-space: nowrap;
+    align-items: center;
+    cursor: pointer; */
+    padding: 0;
+    border-radius: 5px;
+}
+
 .label{
     font-family: Montserrat;
     font-style: normal;
@@ -858,6 +952,7 @@ export default defineComponent({
 
 .connect-wallet-bar{
     text-align: right;
+    height: 0px;
 }
 
 .balance-container{
@@ -939,7 +1034,7 @@ export default defineComponent({
 
 <style lang="postcss">
 #wrapHbar .form-main{
-    grid-row-gap: 0;
+    grid-row-gap: 0px !important;
 }
 
 #wrapHbar .select-value-container {

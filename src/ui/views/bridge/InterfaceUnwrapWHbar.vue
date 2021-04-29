@@ -227,11 +227,6 @@ export default defineComponent({
             return [];
         });
 
-        const firstToken = computed(() => {
-            if (bridgeTokens.value != null) return bridgeTokens.value[ 0 ];
-            return null;
-        });
-
         const idInput: Ref<IdInputElement | null> = ref(null);
 
         function handleAccount(value: string, account: AccountId | null): void {
@@ -296,7 +291,6 @@ export default defineComponent({
 
         const availableAssets = computed(() => {
             if (bridgeTokens.value.length > 0) {
-                const firstAsset = bridgeTokens.value[ 0 ];
                 return bridgeTokens.value;
             }
 

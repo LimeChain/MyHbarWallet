@@ -7,7 +7,7 @@
         @change="handleChange"
     >
         <div class="description">
-            You have unclaimed assets on the Ethereum network. <br>Select the transaction which you would like to claim.
+            You have unclaimed assets on the Polygon network. <br>Select the transaction which you would like to claim.
         </div>
         <div class="modal-header">
             <Select

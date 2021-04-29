@@ -714,8 +714,10 @@ export default defineComponent({
 
         async function mint(transactionId: string, transactionData: any): Promise<void> {
             if (!transactionData) {
+                console.log(transactionId);
                 await getValidatorTransactionData(transactionId);
             }
+            console.log(transactionData);
             const bytesTransactionId = Web3.utils.fromAscii(transactionId);
             const signatures = [];
             for (const signature of transactionData.signatures) {
@@ -836,6 +838,7 @@ export default defineComponent({
         function handleClaim(): void {
             state.modalWrapTokensState.claimBusy = true;
             state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.metamaskConfirmation").toString();
+            // Fix in the case of claim from modal: state.modalPendingTransfer.selectedTransaction
             mint(state.transactionId, state.transactionData);
         }
 

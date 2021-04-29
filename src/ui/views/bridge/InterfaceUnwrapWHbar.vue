@@ -249,6 +249,7 @@ export default defineComponent({
             }
 
             state.bridgeTokens = symbolToToken;
+            state.selectedAsset = state.bridgeTokens.keys().next().value;
         }
 
         watch(

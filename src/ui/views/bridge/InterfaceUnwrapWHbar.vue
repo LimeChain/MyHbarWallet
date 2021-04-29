@@ -8,7 +8,7 @@
         </span>
         <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
         <Select
-            v-model="state.selectedAsset"
+            v-model="state.asset"
             class="select"
             :options="availableAssets"
             @change="handleSelectChange"
@@ -139,7 +139,6 @@ interface State {
     modalSuccessState: ModalSuccessState;
     modalUnWrapTokensState: ModalUnwrapTokensState;
     asset: string;
-    selectedAsset: string;
     assetSelectionError: string;
     bridgeTokens: Map<string, any> | null;
     providerService: InfuraProviderService | null;
@@ -200,7 +199,6 @@ export default defineComponent({
                 totalToReceive: ""
             },
             asset: "",
-            selectedAsset: "",
             assetSelectionError: "",
             bridgeTokens: null,
             providerService: null,
@@ -244,7 +242,7 @@ export default defineComponent({
             }
 
             state.bridgeTokens = symbolToToken;
-            state.selectedAsset = state.bridgeTokens.keys().next().value;
+            state.asset = state.bridgeTokens.keys().next().value;
         }
 
         watch(

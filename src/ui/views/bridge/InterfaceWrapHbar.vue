@@ -1,7 +1,9 @@
 <template>
     <div id="wrapHbar">
     <InterfaceForm :title="$t('interfaceWrapHbar.title')" :description="$t('interfaceWrapHbar.description')">
-         <span class="pending-transfer-bar">
+         <span
+            v-if="state.modalPendingTransfer.pendingTransactions.length > 0"
+            class="pending-transfer-bar">
             <span class="pending-transfer-text">
                 {{ $t('interfaceWrapHbar.pendingTransferNotice') }}
             </span>
@@ -95,6 +97,7 @@
             v-model="state.modalWrapTokensState"
             @deposit="handleDeposit"
             @claim="handleClaim"
+            @change="handleModalWrapTokensChange"
         />
 
         <ModalPendingTransfer
@@ -102,6 +105,7 @@
             @changeSelectedPendingTransaction="handleChangeSelectedPendingTransaction"
             @connectMetamask="handleConnectToMetamask"
             @claim="handleClaim"
+            @change="handleModalPendingTransferChange"
         />
     </InterfaceForm>
     </div>
@@ -289,7 +293,8 @@ export default defineComponent({
                 state.modalPendingTransfer.pendingTransactions = JSON.parse(transactions);
                 state.modalPendingTransfer.transactionIds = state.modalPendingTransfer.pendingTransactions.map((t: any) => t.transactionId);
                 state.modalPendingTransfer.selectedTransaction = state.modalPendingTransfer.transactionIds[ 0 ];
-                handleChangeSelectedPendingTransaction({ selectedTransaction: [ state.modalPendingTransfer.pendingTransactions[ 0 ] ]});
+                // Fix this - puts eth adress by default from pending transactions
+                // handleChangeSelectedPendingTransaction({ selectedTransaction: [ state.modalPendingTransfer.pendingTransactions[ 0 ] ]});
             }
         });
 
@@ -649,6 +654,7 @@ export default defineComponent({
 
             await actions.refreshBalancesAndRate();
             state.modalWrapTokensState.isOpen = false;
+            state.modalPendingTransfer.isOpen = false;
             state.modalSuccessState.isOpen = true;
             state.isBusy = false;
         }
@@ -733,10 +739,14 @@ export default defineComponent({
                     handleTransactionHash,
                     visualizeSuccessModal,
                     handleModalSuccessDismiss);
+                // Remove transaction from local storage
+                state.modalPendingTransfer.pendingTransactions = state.modalPendingTransfer.pendingTransactions.filter((t) => t.transactionId !== transactionId);
+                console.log(transactionId);
+                console.log(state.modalPendingTransfer.pendingTransactions);
+                localStorage.removeItem("transactions");
+                localStorage.setItem("transactions", JSON.stringify(state.modalPendingTransfer.pendingTransactions));
             } catch (error) {
                 console.log(error);
-            } finally {
-                // Remove transaction from local storage
             }
         }
 
@@ -838,8 +848,12 @@ export default defineComponent({
         function handleClaim(): void {
             state.modalWrapTokensState.claimBusy = true;
             state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.metamaskConfirmation").toString();
-            // Fix in the case of claim from modal: state.modalPendingTransfer.selectedTransaction
-            mint(state.transactionId, state.transactionData);
+            // In the case of claim from modal: state.modalPendingTransfer.selectedTransaction
+            if (state.transactionId !== "") {
+                mint(state.transactionId, state.transactionData);
+            } else {
+                mint(state.modalPendingTransfer.selectedTransaction, state.transactionData);
+            }
         }
 
         async function handleConnectToMetamask(): Promise<void> {
@@ -854,6 +868,9 @@ export default defineComponent({
             await metamask.initWeb3();
             state.metamask = metamask;
             state.modalPendingTransfer.metamask = metamask;
+            if (state.transactionData && state.transactionData.majority === true) {
+                state.modalPendingTransfer.claimDisabled = false;
+            }
             // state.metamaskAddress = metamask.selectedAddress();
             actions.alert({
                 message: "Metamask successfully connected",
@@ -862,17 +879,78 @@ export default defineComponent({
         }
 
         function handleChangeSelectedPendingTransaction(transaction: any): void {
+            state.modalPendingTransfer.claimDisabled = true;
+            if (state.transactionData) {
+                state.transactionData.majority = false;
+            }
             state.modalPendingTransfer.amount = transaction.selectedTransaction[ 0 ].amount;
             state.modalPendingTransfer.asset = transaction.selectedTransaction[ 0 ].asset;
             state.ethAddress = transaction.selectedTransaction[ 0 ].receiver;
             state.modalPendingTransfer.receiver = formatEthAddress();
             state.modalPendingTransfer.serviceFee = transaction.selectedTransaction[ 0 ].serviceFee;
             state.modalPendingTransfer.totalToReceive = transaction.selectedTransaction[ 0 ].totalToReceive;
-            state.modalPendingTransfer.noticeText = context.root.$t("interfaceWrapHbar.claim.notice", { amount: transaction.selectedTransaction[ 0 ].totalToReceive?.toString(), asset: transaction.selectedTransaction[ 0 ].asset }).toString();
+            state.modalPendingTransfer.noticeText = context.root.$t("interfaceWrapHbar.waitForConfirmations").toString();
+            // Check for majority
+            clearInterval(transactionInterval);
+            transactionInterval = setInterval(async() => {
+                const transactionData = await txData(state.modalPendingTransfer.selectedTransaction);
+                if (transactionData && transactionData.majority === true) {
+                    state.transactionData = transactionData;
+                    state.modalPendingTransfer.noticeText = context.root.$t("interfaceWrapHbar.claim.notice", { amount: state.modalPendingTransfer.totalToReceive, asset: state.modalPendingTransfer.asset }).toString();
+                    if (state.modalPendingTransfer.metamask) {
+                        state.modalPendingTransfer.claimDisabled = false;
+                    }
+                    clearInterval(transactionInterval);
+                }
+            }, 5000);
         }
 
         function handleViewPendingTransfers(): void {
+            handleChangeSelectedPendingTransaction({ selectedTransaction: [ state.modalPendingTransfer.pendingTransactions[ 0 ] ]});
             state.modalPendingTransfer.isOpen = true;
+        }
+
+        function handleModalWrapTokensChange(): void {
+            state.isBusy = false;
+            state.amount = "";
+            state.memo = "";
+            state.ethAddress = "";
+            state.serviceFee = "";
+            state.ethereumTransaction = null;
+            state.showEthMessage = false;
+            state.asset = Asset.Hbar;
+            state.assetBalance = getters.currentUserBalance()?.toString()!;
+            state.assetNameWithId = Asset.Hbar;
+            state.modalWrapTokensState = {
+                isOpen: false,
+                isBusy: false,
+                noticeText: "",
+                depositDisabled: false,
+                claimDisabled: true,
+                depositBusy: false,
+                claimBusy: false,
+                depositCompleted: false,
+                asset: "",
+                receiver: "",
+                amount: "",
+                serviceFee: "",
+                totalToReceive: "",
+                hederaNetworkFee: "0.1",
+                ethereumNetworkFee: ""
+            };
+        }
+
+        function handleModalPendingTransferChange(): void {
+            state.isBusy = false;
+            state.amount = "";
+            state.memo = "";
+            state.ethAddress = "";
+            state.serviceFee = "";
+            state.ethereumTransaction = null;
+            state.showEthMessage = false;
+            state.asset = Asset.Hbar;
+            state.assetBalance = getters.currentUserBalance()?.toString()!;
+            state.assetNameWithId = Asset.Hbar;
         }
 
         return {
@@ -899,7 +977,9 @@ export default defineComponent({
             handleConnectToMetamask,
             isMetamaskConnected,
             handleChangeSelectedPendingTransaction,
-            handleViewPendingTransfers
+            handleViewPendingTransfers,
+            handleModalWrapTokensChange,
+            handleModalPendingTransferChange
         };
     }
 });

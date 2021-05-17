@@ -35,7 +35,7 @@
                 <Button
                     :busy="state.claimBusy"
                     :compact="true"
-                    :disabled="state.metamask ? false : true"
+                    :disabled="state.claimDisabled ? true : false"
                     :label="$t('interfaceWrapHbar.claim')"
                     @click="handleClaim"
                 />

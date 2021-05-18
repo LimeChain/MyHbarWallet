@@ -281,20 +281,20 @@ export default defineComponent({
 
         onMounted(async() => {
             state.routerService = new RouterService();
+
+            const transactions = localStorage.getItem("transactions");
+            if (transactions) {
+                state.modalPendingTransfer.pendingTransactions = JSON.parse(transactions);
+                state.modalPendingTransfer.transactionIds = state.modalPendingTransfer.pendingTransactions.map((t: any) => t.transactionId);
+                state.modalPendingTransfer.selectedTransaction = state.modalPendingTransfer.transactionIds[ 0 ];
+            }
+    
             await getBridgeTokens();
 
             if (getters.currentUser() != null) {
                 if (getters.currentUserTokens() == null) {
                     actions.refreshBalancesAndRate();
                 }
-            }
-            const transactions = localStorage.getItem("transactions");
-            if (transactions) {
-                state.modalPendingTransfer.pendingTransactions = JSON.parse(transactions);
-                state.modalPendingTransfer.transactionIds = state.modalPendingTransfer.pendingTransactions.map((t: any) => t.transactionId);
-                state.modalPendingTransfer.selectedTransaction = state.modalPendingTransfer.transactionIds[ 0 ];
-                // Fix this - puts eth adress by default from pending transactions
-                // handleChangeSelectedPendingTransaction({ selectedTransaction: [ state.modalPendingTransfer.pendingTransactions[ 0 ] ]});
             }
         });
 
@@ -403,7 +403,7 @@ export default defineComponent({
             if (bridgeTokens.value.length > 0) {
                 const assetsWithNameAndId = [];
                 assetsWithNameAndId.push(Asset.Hbar);
-                state.bridgeTokens.forEach((token: MirrorNodeToken, symbol: string) => {
+                state.bridgeTokens!.forEach((token: MirrorNodeToken, symbol: string) => {
                     assetsWithNameAndId.push(`${symbol} (${token.token_id})`);
                 });
                 return assetsWithNameAndId;
@@ -464,7 +464,7 @@ export default defineComponent({
             if (!handleAmount(state.amount!)) {
                 return;
             }
-            const contractServiceFee = getters.currentNetwork().bridge?.serviceFee;
+            const contractServiceFee = getters.currentNetwork().bridge?.serviceFee!;
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
             state.totalToReceive = amountBn.minus(serviceFee).toString();
@@ -615,7 +615,7 @@ export default defineComponent({
 
         async function handleTokenTransfer(): Promise<void> {
             const recipient: AccountId | null = state.account;
-            const tokenId = TokenId.fromString(state.bridgeTokens?.get(state.asset)?.token_id);
+            const tokenId = TokenId.fromString(state.bridgeTokens?.get(state.asset)?.token_id!);
             const client = getters.currentUser().session.client as Client;
 
             const transactionId = await tokenTransfer(
@@ -750,7 +750,7 @@ export default defineComponent({
             }
         }
 
-        function handleTransactionHash(): Promise<void> {
+        function handleTransactionHash(): void {
             state.modalWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForClaim").toString();
         }
 
@@ -852,6 +852,7 @@ export default defineComponent({
             if (state.transactionId !== "") {
                 mint(state.transactionId, state.transactionData);
             } else {
+                state.modalPendingTransfer.claimBusy = true;
                 mint(state.modalPendingTransfer.selectedTransaction, state.transactionData);
             }
         }

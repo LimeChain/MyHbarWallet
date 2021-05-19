@@ -288,7 +288,7 @@ export default defineComponent({
                 state.modalPendingTransfer.transactionIds = state.modalPendingTransfer.pendingTransactions.map((t: any) => t.transactionId);
                 state.modalPendingTransfer.selectedTransaction = state.modalPendingTransfer.transactionIds[ 0 ];
             }
-    
+
             await getBridgeTokens();
 
             if (getters.currentUser() != null) {
@@ -852,6 +852,9 @@ export default defineComponent({
             if (state.transactionId !== "") {
                 mint(state.transactionId, state.transactionData);
             } else {
+                state.totalToReceive = state.modalPendingTransfer.totalToReceive;
+                state.ethAddress = state.modalPendingTransfer.receiver;
+                state.asset = state.modalPendingTransfer.asset;
                 state.modalPendingTransfer.claimBusy = true;
                 mint(state.modalPendingTransfer.selectedTransaction, state.transactionData);
             }

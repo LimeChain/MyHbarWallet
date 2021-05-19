@@ -469,7 +469,6 @@ export default defineComponent({
 
         async function handleSelectChange(changedTo: string): Promise<void> {
             state.asset = changedTo;
-            console.log(state.asset);
             if (!state.metamask) {
                 state.assetSelectionError = "";
                 state.assetBalance = "0";

@@ -720,10 +720,8 @@ export default defineComponent({
 
         async function mint(transactionId: string, transactionData: any): Promise<void> {
             if (!transactionData) {
-                console.log(transactionId);
                 await getValidatorTransactionData(transactionId);
             }
-            console.log(transactionData);
             const bytesTransactionId = Web3.utils.fromAscii(transactionId);
             const signatures = [];
             for (const signature of transactionData.signatures) {
@@ -741,8 +739,6 @@ export default defineComponent({
                     handleModalSuccessDismiss);
                 // Remove transaction from local storage
                 state.modalPendingTransfer.pendingTransactions = state.modalPendingTransfer.pendingTransactions.filter((t) => t.transactionId !== transactionId);
-                console.log(transactionId);
-                console.log(state.modalPendingTransfer.pendingTransactions);
                 localStorage.removeItem("transactions");
                 localStorage.setItem("transactions", JSON.stringify(state.modalPendingTransfer.pendingTransactions));
             } catch (error) {
@@ -852,6 +848,7 @@ export default defineComponent({
             if (state.transactionId !== "") {
                 mint(state.transactionId, state.transactionData);
             } else {
+                state.transactionId = state.modalPendingTransfer.selectedTransaction;
                 state.totalToReceive = state.modalPendingTransfer.totalToReceive;
                 state.ethAddress = state.modalPendingTransfer.receiver;
                 state.asset = state.modalPendingTransfer.asset;

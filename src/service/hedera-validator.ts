@@ -2,9 +2,10 @@ import { externalRequest } from "./request";
 
 import { getters } from "../ui/store";
 
-export async function txMetadata(gasPriceGwei: string): Promise<any> {
+// returns the event's transaction id on Hedera
+export async function eventTx(eventID: string): Promise<any> {
     try {
-        return await externalRequest(`${getters.currentNetwork().bridge?.validator!}metadata?gasPriceGwei=${gasPriceGwei}`);
+        return await externalRequest(`${getters.currentNetwork().bridge?.validator!}events/${eventID}/tx`);
     } catch (error) {
         // eslint-disable-next-line no-console
         console.warn(error);

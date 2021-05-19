@@ -2,6 +2,8 @@ import Web3 from "web3";
 import { BigNumber } from "bignumber.js";
 import { RouterABI } from "../contracts/abis";
 import { getters } from "../../../ui/store";
+import { splitSignature } from "@ethersproject/bytes";
+import { hexToNumber } from "web3-utils";
 
 declare let window: any;
 
@@ -28,9 +30,35 @@ export class MetamaskService {
             throw new Error("Metamask not found");
         }
 
-        if (this.metamaskProvider.chainId !== getters.currentNetwork().bridge?.ethereumChainId) {
+        if (hexToNumber(this.metamaskProvider.chainId).toString() !== getters.currentNetwork().bridge?.ethereumChainId) {
             throw new Error(`Invalid network selected. It should be ${getters.currentNetwork().bridge?.ethereumNetwork}`);
         }
+    }
+
+    public chainId(): number {
+        return hexToNumber(this.metamaskProvider.chainId);
+    }
+
+    public async signTypedV4Data(msgParams: string): Promise<any> {
+        const method = "eth_signTypedData_v4";
+        const from = this.selectedAddress();
+
+        const params = [ from, msgParams ];
+
+        return new Promise((resolve, reject) => {
+            this.metamaskProvider.sendAsync({ method, params, from }, (err: any, result: any) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                if (result.error) {
+                    reject(result.error);
+                    return;
+                }
+
+                resolve(splitSignature(result.result));
+            });
+        });
     }
 
     public selectedAddress(): string {
@@ -47,6 +75,22 @@ export class MetamaskService {
         const contract = new this.web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
         return contract.methods
             .mint(transactionId, wrappedToken, receiver, amount, signatures)
+            .send(options)
+            .on("transactionHash", handleTransactionHash)
+            .on("receipt", handleReceipt)
+            .on("error", handleError);
+    }
+
+    public async burnWithPermit(contractAddress: string, account: any, amount: BigNumber, deadline: number, v: number, r: any, s: any,
+        handleTransactionHash: any,
+        handleReceipt: any,
+        handleError: any): Promise<any> {
+        const options = { from: this.selectedAddress() };
+
+        const contract = new this.web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
+
+        return contract.methods
+            .burnWithPermit(contractAddress, account, amount, deadline, v, r, s)
             .send(options)
             .on("transactionHash", handleTransactionHash)
             .on("receipt", handleReceipt)

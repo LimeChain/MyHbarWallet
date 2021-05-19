@@ -1,42 +1,65 @@
 <template>
-    <InterfaceForm :title="$t('interfaceUnwrapWHbar.title')">
-        <div v-if="state.web3Provider && state.web3Provider.selectedAddress" class="eth-content">
-            <p class="address">
-                {{ state.web3Provider.selectedAddress }}
-            </p>
-            <p class="balance" v-if="state.whbarBalance">
-                {{ state.whbarBalance }} WHBAR
-            </p>
+    <div id="unwrapHbar">
+    <InterfaceForm :title="$t('interfaceUnwrapWHbar.title')" :description="$t('interfaceUnWrapHbar.description')">
+        <span class="connect-wallet-bar">
+            <ConnectWalletButton
+                :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : 'Connect Wallet'"
+                @connect="handleConnectToMetamask" />
+        </span>
+        <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
+        <Select
+            v-model="state.asset"
+            class="select"
+            :options="availableAssets"
+            @change="handleSelectChange"
+        />
+        <div
+            v-if="state.assetSelectionError"
+            class="error"
+        >
+            {{ state.assetSelectionError }}
         </div>
+
+        <IDInput
+            ref="idInput"
+            class="account"
+            :error="state.idErrorMessage"
+            :valid="state.accountValid"
+            :label="$t('common.toAccount')"
+            show-validation
+            @input="handleAccount"
+            @valid="handleAccountValid"
+        />
+        <div>
+        <div class="balance-container">
+            <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
+            <span class="balance-value">{{ state.assetBalance }}</span>
+        </div>
+
         <TextInput
             :value="state.amount"
             :error="state.amountErrorMessage"
-            :suffix="whbarSuffix"
             :valid="isAmountValid"
             has-input
             :label="$t('common.amount')"
             show-validation
             @input="handleInput"
+            :suffix="state.asset"
         />
-
-        <IDInput
-            ref="idInput"
-            :error="state.idErrorMessage"
-            :valid="state.idValid"
-            :label="$t('common.toAccount')"
-            show-validation
-            @valid="handleValid"
-            @input="handleAccount"
-        />
-
-        <OptionalGasPriceField :value="state.gasPrice" @input="handleGasPriceInput" />
+        </div>
 
         <template v-slot:footer>
+            <!-- <Button
+                :busy="state.isBusy"
+                :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid"
+                :label="$t('interfaceWrapHbar.transferButton')"
+                @click="handleShowSummary"
+            /> -->
             <Button
                 :busy="state.isBusy"
-                :disabled="!state.idValid || !isAmountValid"
-                :label="buttonLabel"
-                @click="handleShowApproveSummary"
+                :disabled="!isAmountValid || !isAssetValid || !state.accountValid || !isMetamaskConnected"
+                :label="$t('interfaceWrapHbar.transferButton')"
+                @click="handleShowModalUnWrapTokens"
             />
         </template>
 
@@ -45,100 +68,107 @@
             @dismiss="handleModalSuccessDismiss"
         >
             <div class="success">
-                <i18n path="modalSuccess.unwrapHbar">
-                    <strong>{{ amount }}</strong>
-                    <strong>{{ state.accountString }}</strong>
-                </i18n>
-                <div v-if="state.ethereumTransaction">
-                    <a
-                    :href="state.ethereumTransaction"
-                    target="_blank"
-                    >Ethereum Transaction</a>
+                <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.accountString}}</strong></p>
+                <div class="transactions-list">
+                    <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
+                    <a :href="state.ethereumExplorerTx" target="_blank">{{$t("interfaceWrapHbar.ethereum.transaction")}}
+                        <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                        />
+                    </a><br>
+                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.hedera.transaction")}}
+                        <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                        />
+                    </a>
                 </div>
             </div>
         </ModalSuccess>
 
-        <ModalUnwrapSummary
-            v-model="state.modalApproveSummaryState"
-            @submit="handleApprove"
-        />
-
-        <ModalUnwrapSummary
-            v-model="state.modalBurnSummaryState"
-            @submit="handleBurn"
+        <ModalUnwrapTokens
+            v-model="state.modalUnWrapTokensState"
+            @deposit="handleDeposit"
         />
     </InterfaceForm>
+    </div>
 </template>
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
 import { BigNumber } from "bignumber.js";
-import { AccountId } from "@hashgraph/sdk";
+import { AccountId, Client } from "@hashgraph/sdk";
+import { mdiLaunch, mdiHelpCircleOutline } from "@mdi/js";
 
 import TextInput from "../../components/TextInput.vue";
 import InterfaceForm from "../../components/InterfaceForm.vue";
 import Button from "../../components/Button.vue";
 import IDInput, { IdInputElement } from "../../components/IDInput.vue";
-import { convert, Unit } from "../../../service/units";
-import ModalUnwrapSummary, { Item, State as ModalSummaryState } from "../../components/bridge/ModalUnwrapSummary.vue";
-import { formatHbar, validateHbar } from "../../../service/format";
-import OptionalMemoField from "../../components/OptionalMemoField.vue";
+import { Unit } from "../../../service/units";
+import { RouterService } from "../../../service/bridge/contracts/router/router";
+import { TokenService } from "../../../service/bridge/contracts/token/token";
+import { InfuraProviderService } from "../../../service/bridge/provider/infura-provider";
+import { MetamaskService } from "../../../service/bridge/metamask/metamask";
+import { Permit, Domain, permitData } from "../../../service/bridge/contracts/permit";
 import ModalSuccess, { State as ModalSuccessState } from "../../components/ModalSuccess.vue";
-import { actions } from "../../store";
-import { gasPriceOracle } from "../../../service/etherscan";
-import OptionalGasPriceField from "../../components/OptionalGasPriceField.vue";
-import Web3 from "web3";
-import Bridge from "../../../contracts/bridge.json";
-import Whbar from "../../../contracts/whbar.json";
+import Notice from "../../components/Notice.vue";
+import { actions, getters } from "../../store";
+import { eventTx } from "../../../service/hedera-validator";
+import Select from "../../components/Select.vue";
+import ModalUnwrapTokens, { State as ModalUnwrapTokensState } from "../../components/bridge/ModalUnwrapTokens.vue";
+import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
+import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
+import { getTokens } from "../../../service/hedera";
+import { Asset } from "../../../domain/transfer";
+import { bytesToHex } from "web3-utils";
 
-let timeout: any = null;
-let web3: any;
-declare const window: any;
+let transactionInterval: any = null;
+
+// Defined in vue.config.js.
 
 interface State {
-    amount: string;
+    amount: string | null;
     account: AccountId | null;
     accountString: string | null;
-    memo: string | null;
+    accountValid: boolean | null;
     isBusy: boolean;
     idErrorMessage: string | null;
     amountErrorMessage: string | null;
     idValid: boolean;
-    transactionId: string;
-    modalApproveSummaryState: ModalSummaryState;
-    modalBurnSummaryState: ModalSummaryState;
     modalSuccessState: ModalSuccessState;
-    gasPrice: string;
-    web3Provider: any;
-    bridge: any;
-    whbar: any;
-    serviceFee: string;
-    whbarBalance: string;
-    ethBalance: string;
-    estimatedApproveTx: string;
-    gasLimitApproveTx: string;
-    estimatedBurnTx: string;
-    gasLimitBurnTx: string;
-    ethereumTransaction: string;
+    modalUnWrapTokensState: ModalUnwrapTokensState;
+    asset: string;
+    assetSelectionError: string;
+    bridgeTokens: Map<string, any> | null;
+    providerService: InfuraProviderService | null;
+    routerService: RouterService | null;
+    tokenService: TokenService | null;
+    contractTokens: any[];
+    assetBalance: string;
+    metamask: MetamaskService | null;
+    totalToReceive: string;
+    hederaExplorerTx: string;
+    ethereumExplorerTx: string;
 }
 
-// Defined in vue.config.js.
-declare const BRIDGE_CONTRACT_ADDRESS: string;
-declare const WHBAR_CONTRACT_ADDRESS: string;
-declare const ETHEREUM_CHAIN_ID: string;
-declare const ETHEREUM_NETWORK: string;
-declare const ETHERSCAN_TX_URL: string;
+function oneHourDeadline(currentTimestamp: number): number {
+    const oneHour = 60 * 60;
+    return currentTimestamp + oneHour;
+}
 
 export default defineComponent({
     components: {
+        ConnectWalletButton,
         TextInput,
         InterfaceForm,
         Button,
         ModalSuccess,
-        ModalUnwrapSummary,
-        OptionalMemoField,
+        ModalUnwrapTokens,
         IDInput,
-        OptionalGasPriceField
+        Notice,
+        Select,
+        MaterialDesignIcon
     },
     props: {},
     setup(_: object | null, context: SetupContext) {
@@ -146,62 +176,53 @@ export default defineComponent({
             amount: "",
             account: null,
             accountString: "",
-            memo: "",
+            accountValid: null,
             isBusy: false,
             idErrorMessage: "",
             amountErrorMessage: "",
             idValid: false,
-            transactionId: "",
-            modalApproveSummaryState: {
-                isOpen: false,
-                isBusy: false,
-                isFileSummary: false,
-                accountDescription: "Bridge Address",
-                account: "",
-                amount: "",
-                items: [],
-                txType: "approveWHbar",
-                submitLabel: context.root.$t("interfaceUnwrapWHbar.approve.continue").toString(),
-                cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: false,
-                isApprove: true
-            },
-            modalBurnSummaryState: {
-                isOpen: false,
-                isBusy: false,
-                isFileSummary: false,
-                account: "",
-                accountDescription: "Receiving Account",
-                amount: "",
-                items: [],
-                txType: "unwrapHbar",
-                submitLabel: context.root.$t("interfaceUnwrapWHbar.burn.continue").toString(),
-                cancelLabel: context.root.$t("interfaceSendTransfer.feeSummary.dismiss").toString(),
-                termsShowNonOperator: false,
-                isApprove: false
-            },
             modalSuccessState: {
                 isOpen: false,
                 hasAction: false
             },
-            gasPrice: "",
-            web3Provider: null,
-            bridge: null,
-            whbar: null,
-            serviceFee: "",
-            whbarBalance: "",
-            ethBalance: "",
-            estimatedApproveTx: "",
-            gasLimitApproveTx: "",
-            estimatedBurnTx: "",
-            gasLimitBurnTx: "",
-            ethereumTransaction: ""
+            modalUnWrapTokensState: {
+                isOpen: false,
+                isBusy: false,
+                noticeText: "",
+                depositDisabled: false,
+                depositBusy: false,
+                depositCompleted: false,
+                asset: "",
+                receiver: "",
+                amount: "",
+                serviceFee: "",
+                totalToReceive: ""
+            },
+            asset: "",
+            assetSelectionError: "",
+            bridgeTokens: null,
+            providerService: null,
+            routerService: null,
+            contractTokens: [],
+            assetBalance: "0",
+            metamask: null,
+            totalToReceive: "",
+            hederaExplorerTx: "",
+            ethereumExplorerTx: "",
+            tokenService: null
         });
 
         onMounted(async() => {
-            await initWeb3();
-            const gasPriceInfo = await gasPriceOracle();
-            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
+            state.routerService = new RouterService();
+            state.tokenService = new TokenService();
+            await getBridgeTokens();
+        });
+
+        const bridgeTokens = computed(() => {
+            if (state.bridgeTokens) {
+                return [ ...state.bridgeTokens.keys() ];
+            }
+            return [];
         });
 
         const idInput: Ref<IdInputElement | null> = ref(null);
@@ -209,6 +230,19 @@ export default defineComponent({
         function handleAccount(value: string, account: AccountId | null): void {
             state.idErrorMessage = "";
             state.account = account;
+        }
+
+        async function getBridgeTokens(): Promise<void> {
+            // retrieve from contract
+            state.contractTokens = await state.routerService?.getWrappedAssets()!;
+            const symbolToToken = new Map<string, any>();
+
+            for (const token of state.contractTokens) {
+                symbolToToken.set(token.symbol, token);
+            }
+
+            state.bridgeTokens = symbolToToken;
+            state.asset = state.bridgeTokens.keys().next().value;
         }
 
         watch(
@@ -220,247 +254,119 @@ export default defineComponent({
             }
         );
 
-        function handleValid(valid: boolean): void {
-            state.idValid = valid;
-        }
-
-        async function handleGasPriceInput(value: string): Promise<void> {
-            clearTimeout(timeout);
-            timeout = setTimeout(async() => {
-                if (value && value !== "0") {
-                    state.gasPrice = value;
-                }
-            }, 300);
-        }
-
-        async function initWeb3(): Promise<void> {
-            if (window.ethereum) {
-                state.web3Provider = window.ethereum;
-                try {
-                    const result = await window.ethereum.request({ method: "eth_requestAccounts" });
-                    web3 = new Web3(state.web3Provider);
-                } catch (error) {
-                    console.error(context.root.$t("interfaceUnwrapWHbar.userDeniedAccess").toString());
-                    return;
-                }
-            } else if (window.web3) {
-                state.web3Provider = window.web3.givenProvider;
-                web3 = new Web3(state.web3Provider);
-            } else {
-                console.error(context.root.$t("interfaceUnwrapWHbar.noWeb3Provider").toString());
-                return;
-            }
-
-            if (state.web3Provider.chainId !== ETHEREUM_CHAIN_ID) {
-                console.error(context.root.$t("interfaceUnwrapWHBar.invalidChainId", { network: ETHEREUM_NETWORK }));
-                return;
-            }
-
-            await initContracts();
-            web3.currentProvider.on("chainChanged", reloadWindow);
-            web3.currentProvider.on("accountsChanged", (accounts: string[]) => {
-                if (accounts.length === 0) {
-                    reloadWindow();
-                    return;
-                }
-                updateBalance();
-            });
-        }
-
-        async function initContracts(): Promise<void> {
-            state.bridge = await new web3.eth.Contract(Bridge.abi, BRIDGE_CONTRACT_ADDRESS);
-            state.whbar = await new web3.eth.Contract(Whbar.abi, WHBAR_CONTRACT_ADDRESS);
-            state.bridge.setProvider(state.web3Provider);
-            state.whbar.setProvider(state.web3Provider);
-            await updateBalance();
+        function handleAccountValid(valid: boolean): void {
+            state.accountValid = valid;
         }
 
         const isAmountValid = computed(() => {
             if (state.amount) {
+                const bigAmount = new BigNumber(state.amount);
                 return (
-                    new BigNumber(state.amount).isGreaterThan(new BigNumber(0)) && validateHbar(state.amount)
+                    !bigAmount.isNaN() &&
+                    bigAmount.isGreaterThan(new BigNumber(0))
                 );
             }
             return false;
         });
 
-        const isServiceFeeValid = computed(() => {
-            if (state.serviceFee) {
-                return (
-                    new BigNumber(state.serviceFee).isGreaterThan(new BigNumber(0)) && validateHbar(state.serviceFee)
-                );
+        const isAssetValid = computed(() => {
+            if (state.asset) {
+                return true;
             }
+
             return false;
         });
 
-        const isEstimatedApproveValid = computed(() => {
-            if (state.serviceFee) {
-                return (
-                    new BigNumber(state.estimatedApproveTx).isGreaterThan(new BigNumber(0))
-                );
+        const isMetamaskConnected = computed(() => state.metamask);
+
+        const isSelectedAssetValid = computed(() => {
+            if (state.assetSelectionError) {
+                return false;
             }
-            return false;
+
+            return true;
         });
 
-        const isEstimatedBurnValid = computed(() => {
-            if (state.serviceFee) {
-                return (
-                    new BigNumber(state.estimatedBurnTx).isGreaterThan(new BigNumber(0))
-                );
+        const availableAssets = computed(() => {
+            if (bridgeTokens.value.length > 0) {
+                return bridgeTokens.value;
             }
-            return false;
+
+            return [];
         });
 
-        const amount = computed(() => {
-            if (state.amount) {
-                return formatHbar(new BigNumber(state.amount));
-            }
-            return formatHbar(new BigNumber(0));
-        });
+        async function handleAmount(amount: string): Promise<boolean> {
+            state.amountErrorMessage = null;
+            state.amount = amount;
 
-        const truncate = computed(() => amount.value && amount.value.length > 15 ?
-            `${amount.value.slice(0, 13)}...` :
-            amount.value);
+            const asset = state.bridgeTokens?.get(state.asset);
+            const balance = await state.tokenService?.balanceOf(
+                asset.address,
+                state.metamask!.selectedAddress());
 
-        const buttonLabel = computed(() => {
-            let testAmount = 0;
+            const balanceBn = new BigNumber(balance!);
+            const amountBn = new BigNumber(amount).multipliedBy(10 ** asset.decimals);
 
-            if (state.amount != null) {
-                const amount = new BigNumber(state.amount);
+            const isLessThan = amountBn.isLessThan(balanceBn);
 
-                if (amount.gt(1)) testAmount = 2;
-                else if (amount.lt(1)) testAmount = 0;
-                else testAmount = 1;
+            if (!isLessThan) {
+                state.amountErrorMessage = context.root.$t("interfaceSendToken.insufficientTokenBalance").toString();
+                return false;
             }
 
-            return context.root
-                .$tc("interfaceUnwrapWHbar.unwrapWHbar", testAmount, { count: truncate.value })
-                .toString();
-        });
-
-        // Modal Fee Summary State
-        const summaryAmount = computed(() => amount.value);
-        const summaryAccount = computed(() => state.accountString);
-
-        const summaryApproveItems = computed((): Item[] => [
-            {
-                description: context.root.$t("interfaceUnwrapWHbar.approveAmount").toString(),
-                value:
-                            isAmountValid && state.amount ?
-                                new BigNumber(state.amount) :
-                                new BigNumber(0)
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.ethereumNetworkFee").toString(),
-                value: isEstimatedApproveValid && state.estimatedApproveTx ? new BigNumber(state.estimatedApproveTx) : new BigNumber(0)
-            }
-        ]);
-
-        const summaryBurnItems = computed((): Item[] => [
-            {
-                description: context.root.$t("interfaceUnwrapWHbar.unwrapAmount").toString(),
-                value:
-                            isAmountValid && state.amount ?
-                                new BigNumber(state.amount) :
-                                new BigNumber(0)
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.bridgeServiceFee").toString(),
-                value: isServiceFeeValid && state.serviceFee ? new BigNumber(state.serviceFee) : new BigNumber(0)
-            },
-            {
-                description: context.root.$t("interfaceWrapHbar.ethereumNetworkFee").toString(),
-                value: isEstimatedBurnValid && state.estimatedBurnTx ? new BigNumber(state.estimatedBurnTx) : new BigNumber(0)
-            }
-        ]);
-
-        async function handleShowApproveSummary(): Promise<void> {
-            await updateBalance();
-
-            const amountBn = new BigNumber(state.amount ? state.amount : 0);
-
-            if (amountBn.gt(state.whbarBalance)) {
-                state.amountErrorMessage = "Insufficient balance";
-                return;
-            }
-
-            const contractServiceFee = await state.bridge.methods.serviceFee().call();
-            const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
-
-            if (amountBn.minus(serviceFee).lte(0)) {
-                state.amountErrorMessage = "Invalid amount provided";
-                return;
-            }
-
-            const tinyBarAmount = convert(
-                state.amount,
-                Unit.Hbar,
-                Unit.Tinybar,
-                false
-            );
-
-            const gasPriceWei = web3.utils.toWei(state.gasPrice, "gwei");
-            const options = { from: state.web3Provider.selectedAddress, gasPrice: gasPriceWei };
-
-            const gasLimitApproveTxWei = await state.whbar.methods.approve(BRIDGE_CONTRACT_ADDRESS, tinyBarAmount).estimateGas(options);
-            const bnGasPrice = new BigNumber(String(gasPriceWei));
-            const bnApproveWei = new BigNumber(String(gasLimitApproveTxWei)).multipliedBy(bnGasPrice);
-
-            state.gasLimitApproveTx = gasLimitApproveTxWei;
-            state.estimatedApproveTx = web3.utils.fromWei(bnApproveWei.toString(), "ether");
-            // state.bridge.methods.burn(tinyBarAmount, web3.utils.fromAscii(state.account?.toString())).estimateGas(options, handleEstimation);
-
-            state.serviceFee = serviceFee.toString();
-
-            state.modalApproveSummaryState.account = formatBridgeAddress();
-            state.modalApproveSummaryState.amount = summaryAmount.value!;
-            const items: readonly Item[] = summaryApproveItems.value!;
-            state.modalApproveSummaryState.items = items;
-            state.modalApproveSummaryState.isOpen = true;
+            return true;
         }
 
-        async function handleShowBurnSummary(): Promise<void> {
-            await updateBalance();
+        async function isReceiverAssociated(): Promise<boolean> {
+            const nativeAsset = state.bridgeTokens?.get(state.asset).nativeAsset!;
+            if (nativeAsset.toLowerCase() === Asset.Hbar.toLowerCase()) {
+                return true;
+            }
 
+            try {
+                const client = getters.currentUser().session.client as Client;
+                const tokens = await getTokens(state.account!, client as Client);
+
+                for (const token of tokens!) {
+                    if (token.tokenId.toString() === nativeAsset) {
+                        return true;
+                    }
+                }
+            } catch (error) {
+                handleError(error);
+            }
+            state.idErrorMessage = context.root.$t("interfaceUnwrapWHbar.tokenNotAssociated", { wrappedAsset: state.asset, nativeAsset }).toString();
+
+            return false;
+        }
+
+        async function handleShowModalUnWrapTokens(): Promise<void> {
+            const isValidAmount = await handleAmount(state.amount!);
+            if (!isValidAmount) {
+                return;
+            }
+
+            const validAccount = await isReceiverAssociated();
+            if (!validAccount) {
+                return;
+            }
+
+            const contractServiceFee = getters.currentNetwork().bridge?.serviceFee!;
             const amountBn = new BigNumber(state.amount ? state.amount : 0);
-
-            if (amountBn.gt(state.whbarBalance)) {
-                state.amountErrorMessage = "Insufficient balance";
-                return;
-            }
-
-            const contractServiceFee = await state.bridge.methods.serviceFee().call();
             const serviceFee = amountBn.multipliedBy(contractServiceFee).dividedBy(100000);
+            state.totalToReceive = amountBn.minus(serviceFee).toString();
 
-            if (amountBn.minus(serviceFee).lte(0)) {
-                state.amountErrorMessage = "Invalid amount provided";
-                return;
-            }
-
-            const tinyBarAmount = convert(
-                state.amount,
-                Unit.Hbar,
-                Unit.Tinybar,
-                false
-            );
-
-            const gasPriceWei = web3.utils.toWei(state.gasPrice, "gwei");
-            const options = { from: state.web3Provider.selectedAddress, gasPrice: gasPriceWei };
-
-            const gasLimitBurnTxWei = await state.bridge.methods.burn(tinyBarAmount, web3.utils.fromAscii(state.account?.toString())).estimateGas(options);
-            const bnGasPrice = new BigNumber(String(gasPriceWei));
-            const bnBurnWei = new BigNumber(String(gasLimitBurnTxWei)).multipliedBy(bnGasPrice);
-
-            state.gasLimitApproveTx = gasLimitBurnTxWei;
-            state.estimatedBurnTx = web3.utils.fromWei(bnBurnWei.toString(), "ether");
-
-            state.serviceFee = serviceFee.toString();
-
-            state.modalBurnSummaryState.account = summaryAccount.value!;
-            state.modalBurnSummaryState.amount = summaryAmount.value!;
-            const items: readonly Item[] = summaryBurnItems.value!;
-            state.modalBurnSummaryState.items = items;
-            state.modalBurnSummaryState.isOpen = true;
+            // state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.deposit.notice", { amount: state.amount?.toString(), asset: state.asset }).toString();
+            state.modalUnWrapTokensState.asset = state.asset;
+            state.modalUnWrapTokensState.receiver = state.accountString!;
+            state.modalUnWrapTokensState.amount = state.amount?.toString()!;
+            state.modalUnWrapTokensState.serviceFee = serviceFee.toString();
+            state.modalUnWrapTokensState.totalToReceive = state.totalToReceive;
+            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.deposit.notice", { amount: state.amount?.toString(), asset: state.asset }).toString();
+            state.modalUnWrapTokensState.depositBusy = false;
+            state.modalUnWrapTokensState.depositDisabled = false;
+            state.modalUnWrapTokensState.depositCompleted = false;
+            state.modalUnWrapTokensState.isOpen = true;
         }
 
         // Taken from [UnitConverter]
@@ -497,172 +403,406 @@ export default defineComponent({
             state.amount = value;
             state.amountErrorMessage = "";
 
-            const roundTrippedAmount = convert(
-                state.amount,
-                Unit.Hbar,
-                Unit.Tinybar,
-                false
-            );
+            // const roundTrippedAmount = convert(
+            //     state.amount,
+            //     Unit.Hbar,
+            //     Unit.Tinybar,
+            //     false
+            // );
 
-            state.amount = convert(
-                roundTrippedAmount,
-                Unit.Tinybar,
-                Unit.Hbar,
-                false
-            );
+            // state.amount = convert(
+            //     roundTrippedAmount,
+            //     Unit.Tinybar,
+            //     Unit.Hbar,
+            //     false
+            // );
 
             boundInput(event, value, state.amount);
         }
 
-        async function updateBalance(): Promise<void> {
-            state.whbarBalance = "";
-            const balance = await state.whbar.methods.balanceOf(state.web3Provider.selectedAddress).call();
-            state.whbarBalance = convert(
-                balance,
-                Unit.Tinybar,
-                Unit.Hbar,
-                false
-            );
-        }
+        async function handleError(error: { status: { code: number }; name: string }): Promise<void> {
+            // eslint-disable-next-line require-atomic-updates
+            state.idErrorMessage = "";
+            // eslint-disable-next-line require-atomic-updates
+            state.amountErrorMessage = "";
 
-        // eslint-disable-next-line sonarjs/cognitive-complexity
-        async function handleApprove(): Promise<void> {
-            state.isBusy = true;
-            state.modalApproveSummaryState.isBusy = true;
-            const whbarsAmount = parseInt(state.amount) * 10 ** 8;
+            const { HederaStatusError, Status } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
-            const fromAddress = state.web3Provider.selectedAddress;
-            const gasPrice = web3.utils.toWei(state.gasPrice, "gwei");
+            if (error instanceof HederaStatusError) {
+                const errorMessage = (await actions.handleHederaError({
+                    error,
+                    showAlert: false
+                })).message;
 
-            const approveOptions = { from: fromAddress, gasPrice, gas: state.gasLimitApproveTx };
-
-            try {
-                await state.whbar.methods
-                    .approve(BRIDGE_CONTRACT_ADDRESS, whbarsAmount)
-                    .send(approveOptions);
-
-                handleShowBurnSummary();
-            } catch (error) {
-                handleModalSummaryDimiss();
-            } finally {
-                state.modalApproveSummaryState.isBusy = false;
-                state.modalApproveSummaryState.isOpen = false;
-                state.isBusy = false;
+                // Small duplication of effort to assign errorMessage to correct TextInput
+                switch (error.status.code) {
+                    case Status.InvalidAccountId.code:
+                    case Status.AccountRepeatedInAccountAmounts.code:
+                        state.idErrorMessage = errorMessage;
+                        break;
+                    case Status.InsufficientAccountBalance.code:
+                        state.amountErrorMessage = errorMessage;
+                        break;
+                    default:
+                        if (errorMessage !== "") {
+                            actions.alert({
+                                message: errorMessage,
+                                level: "warn"
+                            });
+                        } else {
+                            throw error; // Unhandled Error Modal will open
+                        }
+                }
+            } else if (
+                error.name === "TransportStatusError" &&
+                    getters.currentUser().wallet.getLoginMethod() ===
+                        LoginMethod.Ledger
+            ) {
+                actions.handleLedgerError({
+                    error,
+                    showAlert: true
+                });
+            } else {
+                throw error;
             }
         }
 
-        async function handleBurn(): Promise<void> {
-            state.isBusy = true;
-            state.modalBurnSummaryState.isBusy = true;
-
-            const whbarsAmount = parseInt(state.amount) * 10 ** 8;
-            const fromAddress = state.web3Provider.selectedAddress;
-            const gasPrice = web3.utils.toWei(state.gasPrice, "gwei");
-
-            const burnOptions = { from: fromAddress, gasPrice, gas: state.gasLimitBurnTx };
-            try {
-                submitBurn(whbarsAmount, burnOptions);
-            } catch (error) {
-                handleModalSummaryDimiss();
-            } finally {
-                state.isBusy = false;
+        async function handleSelectChange(changedTo: string): Promise<void> {
+            state.asset = changedTo;
+            if (!state.metamask) {
+                state.assetSelectionError = "";
+                state.assetBalance = "0";
+                return;
             }
+
+            state.assetBalance = await getBalance();
+            state.assetSelectionError = "";
         }
 
-        async function handleModalSuccessDismiss(): Promise<void> {
+        async function visualizeSuccessModal(): Promise<void> {
+            await actions.refreshBalancesAndRate();
+            state.modalUnWrapTokensState.isOpen = false;
+            state.modalSuccessState.isOpen = true;
+            state.isBusy = false;
+        }
+
+        async function handleModalSuccessDismiss(error: any, receipt: any = null): Promise<void> {
+            if (receipt) {
+                visualizeSuccessModal();
+                return;
+            }
+
             state.modalSuccessState.isOpen = false;
             state.isBusy = false;
             state.amount = "";
             state.account = null;
             state.accountString = "";
             (idInput.value! as IdInputElement).clear();
-            state.memo = "";
-            state.accountString = "";
-            state.serviceFee = "";
-            state.ethereumTransaction = "";
-            const gasPriceInfo = await gasPriceOracle();
-            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
-            await updateBalance();
+            state.assetBalance = await getBalance();
+            state.hederaExplorerTx = "";
+            state.ethereumExplorerTx = "";
+            state.modalUnWrapTokensState = {
+                isOpen: false,
+                isBusy: false,
+                noticeText: "",
+                depositBusy: false,
+                depositCompleted: false,
+                depositDisabled: false,
+                asset: "",
+                receiver: "",
+                amount: "",
+                serviceFee: "",
+                totalToReceive: ""
+            };
         }
 
-        function submitBurn(whbarsAmount: any, options: any): void {
-            state.bridge.methods.burn(whbarsAmount, web3.utils.fromAscii(state.account?.toString()))
-                .send(options)
-                .on("transactionHash", visualizeSuccessModal)
-                .on("error", handleModalSummaryDimiss);
-        }
+        async function handleBlockConfirmations(receipt: any): Promise<void> {
+            const targetBlock = receipt.blockNumber + getters.currentNetwork().bridge?.blockConfirmations;
+            clearInterval(transactionInterval);
+            transactionInterval = setInterval(async() => {
+                const latestBlock = await state.tokenService?.getLatestBlock()!;
+                if (latestBlock >= targetBlock) {
+                    const latestReceipt = await state.tokenService?.getTransactionReceipt(receipt.transactionHash);
+                    if (!latestReceipt) {
+                        state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.networkReorganised").toString();
+                        return;
+                    }
 
-        async function visualizeSuccessModal(hash: string): Promise<void> {
-            state.ethereumTransaction = `${ETHERSCAN_TX_URL}${hash}`;
+                    if (latestReceipt.blockNumber !== receipt.blockNumber) {
+                        state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.networkReorganised").toString();
+                        return;
+                    }
 
-            await actions.refreshBalancesAndRate();
-            state.bridge.once("Burn", { topics: [ null, web3.utils.padLeft(state.web3Provider.selectedAddress, 64) ]}, async(error: any, result: any) => {
-                if (error) {
-                    console.error(error);
-                    return;
+                    clearInterval(transactionInterval);
+                    handleHederaTxRetrieval(`${receipt.transactionHash}-${receipt.events.Burn.logIndex}`);
                 }
-                await updateBalance();
+            }, 5000);
+        }
+
+        async function handleHederaTxRetrieval(eventID: string): Promise<void> {
+            clearInterval(transactionInterval);
+            transactionInterval = setInterval(async() => {
+                const txId = await eventTx(eventID);
+                if (txId) {
+                    state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}transactions/${txId}`;
+                    clearInterval(transactionInterval);
+                    visualizeSuccessModal();
+                }
+            }, 5000);
+        }
+
+        async function handleDeposit(): Promise<void> {
+            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.claim.metamaskConfirmation").toString();
+            state.modalUnWrapTokensState.depositBusy = true;
+            const asset = state.bridgeTokens?.get(state.asset);
+
+            try {
+                const deadline = oneHourDeadline(await state.routerService!.getLatestBlockTimestamp());
+                const amountBn = new BigNumber(state.amount!).multipliedBy(10 ** asset.decimals);
+                const data = await unsignedData(asset.address, amountBn.toNumber(), deadline);
+                const signature = await state.metamask!.signTypedV4Data(data);
+                await burnWithPermit(asset.address, state.account!._toProto().serializeBinary(), amountBn, deadline, signature);
+            } catch (error) {
+                handleModalSuccessDismiss(error);
+            }
+        }
+
+        async function burnWithPermit(contractAddress: string, account: any, amount: BigNumber, deadline: number, signature: any): Promise<void> {
+            const hexAccount = bytesToHex(account);
+
+            try {
+                await state.metamask?.burnWithPermit(
+                    contractAddress,
+                    hexAccount,
+                    amount,
+                    deadline,
+                    signature.v,
+                    signature.r,
+                    signature.s,
+                    handleTransactionHash,
+                    handleReceipt,
+                    handleModalSuccessDismiss
+                );
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        async function unsignedData(contractAddress: string, amount: number, deadline: number): Promise<string> {
+            const contractData = await state.tokenService?.getPermitData(contractAddress, state.metamask!.selectedAddress());
+            const id = await state.metamask?.chainId();
+
+            const message: Permit = {
+                owner: state.metamask!.selectedAddress(),
+                spender: contractData.controller,
+                value: amount,
+                nonce: contractData.nonce,
+                deadline // get latest block and add 1h in seconds
+            };
+
+            const domain: Domain = {
+                name: contractData.name,
+                version: "1",
+                chainId: id!,
+                verifyingContract: contractAddress
+            };
+
+            return permitData(domain, message);
+        }
+
+        function handleTransactionHash(transactionHash: string): void {
+            state.ethereumExplorerTx = `${getters.currentNetwork().bridge?.etherscanTxUrl}${transactionHash}`;
+            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
+        }
+
+        function handleReceipt(receipt: any): void {
+            state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.waitForBlockConfirmations").toString();
+            handleBlockConfirmations(receipt);
+        }
+
+        async function getBalance(): Promise<string> {
+            const asset = state.bridgeTokens?.get(state.asset);
+            const balance = await state.tokenService?.balanceOf(
+                asset.address,
+                state.metamask!.selectedAddress())!;
+
+            return new BigNumber(balance)
+                .dividedBy(10 ** asset.decimals).toString();
+        }
+
+        async function handleConnectToMetamask(): Promise<void> {
+            if (state.metamask) {
+                actions.alert({
+                    message: "Metamask already connected",
+                    level: "success"
+                });
+                return;
+            }
+            const metamask = new MetamaskService();
+            await metamask.initWeb3();
+            state.metamask = metamask;
+            if (state.asset) {
+                state.assetBalance = await getBalance();
+            }
+            // state.metamaskAddress = metamask.selectedAddress();
+            actions.alert({
+                message: "Metamask successfully connected",
+                level: "success"
             });
-            state.modalBurnSummaryState.isOpen = false;
-            state.modalSuccessState.isOpen = true;
-        }
-
-        async function handleModalSummaryDimiss(): Promise<void> {
-            state.modalBurnSummaryState.isOpen = false;
-            state.modalApproveSummaryState.isOpen = false;
-            await clearState();
-        }
-
-        async function clearState(): Promise<void> {
-            state.isBusy = false;
-            state.amount = "";
-            state.account = null;
-            state.accountString = "";
-            (idInput.value! as IdInputElement).clear();
-            state.memo = "";
-            state.accountString = "";
-            state.serviceFee = "";
-            state.ethereumTransaction = "";
-            const gasPriceInfo = await gasPriceOracle();
-            state.gasPrice = gasPriceInfo.result.SafeGasPrice;
-            await updateBalance();
         }
 
         return {
-            amount,
             state,
-            summaryAmount,
-            summaryAccount,
-            summaryApproveItems,
-            buttonLabel,
             isAmountValid,
-            whbarSuffix: "WHBAR",
+            hbarSuffix: Unit.Hbar,
             tinybarSuffix: Unit.Tinybar,
             idInput,
-            handleShowApproveSummary,
-            handleApprove,
-            handleBurn,
             handleModalSuccessDismiss,
-            truncate,
+            handleShowModalUnWrapTokens,
             handleInput,
-            handleValid,
             handleAccount,
-            handleGasPriceInput
+            mdiHelpCircleOutline,
+            mdiLaunch,
+            availableAssets,
+            handleSelectChange,
+            isSelectedAssetValid,
+            handleDeposit,
+            handleConnectToMetamask,
+            isMetamaskConnected,
+            handleAccountValid,
+            isAssetValid
         };
     }
 });
-
-function formatBridgeAddress(): string {
-    return `${BRIDGE_CONTRACT_ADDRESS.slice(0, 6)}...${BRIDGE_CONTRACT_ADDRESS.slice(-6)}`;
-}
-
-function reloadWindow(): void {
-    window.location.reload();
-}
 </script>
 <style lang="postcss" scoped>
+.label{
+    font-family: Montserrat;
+    font-style: normal;
+    font-weight: bold;
+    line-height: 15px;
+    display: inline-block;
+    font-size: 16px;
+    height: 24px;
+    padding: 0 8px;
+}
+
+.connect-wallet-bar{
+    text-align: right;
+}
+
+.balance-container{
+    display:block;
+    position: relative;
+    top: 20px;
+    text-align: right;
+}
+
+.label-small{
+    font-family: Montserrat;
+    font-style: normal;
+    font-size: 12px;
+    color: #828282;
+    margin: 3px;
+}
+
+.balance-value{
+    font-family: Montserrat;
+    font-style: normal;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 3px;
+}
+
+.submit-options{
+    display: inline-block;
+}
+
+.submit-options input{
+    margin: 3px;
+    background-color: #62C0AA;
+}
+
 .success > span:first-of-type {
     display: block;
     padding-block-end: 20px;
+}
+
+.success p{
+    font-family: Montserrat;
+    font-style: normal;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 17px;
+    text-align: center;
+    color: #828282;
+}
+
+.success strong{
+    color: black;
+}
+
+.success .transactions-list p{
+    color: #BDBDBD;
+    margin: 0;
+}
+.success .transactions-list a{
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 15px;
+    color: #62C0AA;
+}
+.success .transactions-list{
+    margin-top: 50px;
+    text-align: center;
+}
+
+.error {
+    color: var(--color-lightish-red);
+    font-size: 14px;
+    margin: 7px 0 0 15px;
+}
+
+.launch-icon{
+    width: 18px;
+}
+</style>
+
+<style lang="postcss">
+#unwrapHbar .form-main{
+    grid-row-gap: 0;
+}
+
+#unwrapHbar .select-value-container {
+    border: 1px solid #62c0aa;
+    border-radius: 4px;
+    box-sizing: border-box;
+    width: 145px;
+    margin-bottom: 13px;
+}
+
+#unwrapHbar .select-value-container {
+    font-family: Montserrat;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: bold;
+    line-height: 17px;
+}
+
+#unwrapHbar .select-option {
+    font-family: Montserrat;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: bold;
+    line-height: 17px;
+    width: 145px;
+}
+
+#unwrapHbar .select-menu {
+    width: 145px;
+}
+
+#unwrapHbar .icon {
+    color: #62c0aa;
 }
 </style>

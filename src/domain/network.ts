@@ -44,8 +44,8 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
         node: { shard: 0, realm: 0, node: 3 },
         name: NetworkName.TESTNET,
         bridge: {
-            routerContractAddress: "0xe66a56020a6e3ad39cC505fb291E1D75b04396a4",
-            bridgeAccount: "0.0.1534138",
+            routerContractAddress: "0x4f5e837e6f103A9d53d9E4251695083232AA8b39",
+            bridgeAccount: "0.0.1547520",
             serviceFee: 10000,
             validator: "http://35.225.100.55/api/v1/",
             etherscanTxUrl: "https://explorer-mumbai.maticvigil.com/tx/",

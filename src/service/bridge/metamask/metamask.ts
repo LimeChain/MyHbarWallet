@@ -69,7 +69,7 @@ export class MetamaskService {
         return `${this.metamaskProvider.selectedAddress?.substr(0, 6)}...${this.metamaskProvider.selectedAddress?.substr(this.metamaskProvider.selectedAddress.length - 6)}`;
     }
 
-    public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: BigNumber, signatures: string[], handleTransactionHash: any, handleReceipt: any, handleError: any): Promise<any> {
+    public async mint(transactionId: string, wrappedToken: string, receiver: string, amount: string, signatures: string[], handleTransactionHash: any, handleReceipt: any, handleError: any): Promise<any> {
         const options = { from: this.selectedAddress() };
 
         const contract = new this.web3.eth.Contract(RouterABI, getters.currentNetwork().bridge?.routerContractAddress);
@@ -81,7 +81,7 @@ export class MetamaskService {
             .on("error", handleError);
     }
 
-    public async burnWithPermit(contractAddress: string, account: any, amount: BigNumber, deadline: number, v: number, r: any, s: any,
+    public async burnWithPermit(contractAddress: string, account: any, amount: string, deadline: number, v: number, r: any, s: any,
         handleTransactionHash: any,
         handleReceipt: any,
         handleError: any): Promise<any> {

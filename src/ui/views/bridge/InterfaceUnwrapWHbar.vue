@@ -561,13 +561,13 @@ export default defineComponent({
                 const amountBn = new BigNumber(state.amount!).multipliedBy(10 ** asset.decimals);
                 const data = await unsignedData(asset.address, amountBn.toNumber(), deadline);
                 const signature = await state.metamask!.signTypedV4Data(data);
-                await burnWithPermit(asset.address, state.account!._toProto().serializeBinary(), amountBn, deadline, signature);
+                await burnWithPermit(asset.address, state.account!._toProto().serializeBinary(), amountBn.toString(), deadline, signature);
             } catch (error) {
                 handleModalSuccessDismiss(error);
             }
         }
 
-        async function burnWithPermit(contractAddress: string, account: any, amount: BigNumber, deadline: number, signature: any): Promise<void> {
+        async function burnWithPermit(contractAddress: string, account: any, amount: string, deadline: number, signature: any): Promise<void> {
             const hexAccount = bytesToHex(account);
 
             try {

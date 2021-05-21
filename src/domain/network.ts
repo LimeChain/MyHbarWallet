@@ -51,7 +51,7 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
             etherscanTxUrl: "https://explorer-mumbai.maticvigil.com/tx/",
             infuraApiUrl: "wss://ws-matic-mumbai.chainstacklabs.com",
             ethereumChainId: "80001",
-            ethereumNetwork: "POLYGON",
+            ethereumNetwork: "Polygon Mumbai Testnet",
             mirrorNodeUrl: "http://testnet.mirrornode.hedera.com/api/v1/",
             blockConfirmations: 5
         }

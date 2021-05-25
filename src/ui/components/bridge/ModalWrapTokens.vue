@@ -21,12 +21,6 @@
             </p>
         </template>
         <template v-if="state.depositCompleted">
-            <!--
-            <p class="fee-display">
-                <span class="fee-label">{{ $t("interfaceWrapHbar.ethereum.fee") }}<InfoButton message="Test Message" /></span>
-                <span class="fee-value">0.5</span>
-            </p>
-            -->
         </template>
         <template>
             <div class="buttons-containter">
@@ -91,7 +85,6 @@ export interface State {
     serviceFee: string;
     totalToReceive: string;
     hederaNetworkFee: string;
-    ethereumNetworkFee: string;
 }
 
 export default defineComponent({

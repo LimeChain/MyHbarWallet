@@ -83,7 +83,7 @@
                                 :icon="mdiLaunch"
                         />
                     </a><br>
-                    <a :href="state.ethereumTransaction" target="_blank">{{$t("interfaceWrapHbar.ethereum.transaction")}}
+                    <a :href="state.evmTx" target="_blank">{{$t("interfaceWrapHbar.evm.transaction")}}
                         <MaterialDesignIcon
                                 class="launch-icon"
                                 :icon="mdiLaunch"
@@ -163,7 +163,7 @@ interface State {
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
     serviceFee: string;
-    ethereumTransaction: any;
+    evmTx: any;
     showEthMessage: boolean;
     wrapAmount: string;
     asset: string;
@@ -240,8 +240,7 @@ export default defineComponent({
                 amount: "",
                 serviceFee: "",
                 totalToReceive: "",
-                hederaNetworkFee: "0.1",
-                ethereumNetworkFee: ""
+                hederaNetworkFee: "0.1"
             },
             modalPendingTransfer: {
                 isOpen: false,
@@ -263,7 +262,7 @@ export default defineComponent({
             ethAddress: "",
             ethAddressErrorMessage: "",
             serviceFee: "",
-            ethereumTransaction: null,
+            evmTx: null,
             showEthMessage: false,
             wrapAmount: "",
             asset: Asset.Hbar,
@@ -591,7 +590,7 @@ export default defineComponent({
             const tokenId = state.bridgeTokens?.get(state.asset)?.token_id;
             if (!tokenId) {
                 state.assetBalance = "0";
-                state.assetSelectionError = "Ethereum Token not found";
+                state.assetSelectionError = "EVM Token not found";
                 return;
             }
 
@@ -650,7 +649,7 @@ export default defineComponent({
 
         async function visualizeSuccessModal(receipt: any): Promise<void> {
             state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}transactions/${state.transactionId}`;
-            state.ethereumTransaction = `${getters.currentNetwork().bridge?.etherscanTxUrl}${receipt.transactionHash}`;
+            state.evmTx = `${getters.currentNetwork().bridge?.explorerTxUrl}${receipt.transactionHash}`;
 
             await actions.refreshBalancesAndRate();
             state.modalWrapTokensState.isOpen = false;
@@ -671,7 +670,7 @@ export default defineComponent({
             state.memo = "";
             state.ethAddress = "";
             state.serviceFee = "";
-            state.ethereumTransaction = null;
+            state.evmTx = null;
             state.showEthMessage = false;
             state.asset = Asset.Hbar;
             state.assetBalance = getters.currentUserBalance()?.toString()!;
@@ -690,8 +689,7 @@ export default defineComponent({
                 amount: "",
                 serviceFee: "",
                 totalToReceive: "",
-                hederaNetworkFee: "0.1",
-                ethereumNetworkFee: ""
+                hederaNetworkFee: "0.1"
             };
         }
 
@@ -917,7 +915,7 @@ export default defineComponent({
             state.memo = "";
             state.ethAddress = "";
             state.serviceFee = "";
-            state.ethereumTransaction = null;
+            state.evmTx = null;
             state.showEthMessage = false;
             state.asset = Asset.Hbar;
             state.assetBalance = getters.currentUserBalance()?.toString()!;
@@ -936,8 +934,7 @@ export default defineComponent({
                 amount: "",
                 serviceFee: "",
                 totalToReceive: "",
-                hederaNetworkFee: "0.1",
-                ethereumNetworkFee: ""
+                hederaNetworkFee: "0.1"
             };
         }
 
@@ -947,7 +944,7 @@ export default defineComponent({
             state.memo = "";
             state.ethAddress = "";
             state.serviceFee = "";
-            state.ethereumTransaction = null;
+            state.evmTx = null;
             state.showEthMessage = false;
             state.asset = Asset.Hbar;
             state.assetBalance = getters.currentUserBalance()?.toString()!;

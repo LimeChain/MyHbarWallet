@@ -141,7 +141,6 @@ import HeaderHamburgerMenu from "./HeaderHamburgerMenu.vue";
 import HeaderHamburgerButton from "./HeaderHamburgerButton.vue";
 import ModalLogOut from "./ModalLogOut.vue";
 import MaterialDesignIcon from "./MaterialDesignIcon.vue";
-import PendingTransferButton from "./bridge/PendingTransferButton.vue";
 
 // Yes, it is used
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -156,8 +155,7 @@ export default defineComponent({
         HeaderHamburgerMenu,
         HeaderHamburgerButton,
         ModalLogOut,
-        MaterialDesignIcon,
-        PendingTransferButton
+        MaterialDesignIcon
     },
     setup(_, context) {
         const isInterface = computed(() => {

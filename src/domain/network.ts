@@ -28,10 +28,10 @@ export interface BridgeSettings {
     bridgeAccount: string; // Hedera account id of bridge
     serviceFee: number;
     validator: string;
-    etherscanTxUrl: string;
+    explorerTxUrl: string;
     infuraApiUrl: string;
-    ethereumChainId: string;
-    ethereumNetwork: string;
+    evmChainId: string;
+    evmNetwork: string;
     mirrorNodeUrl: string;
     blockConfirmations: number;
 }
@@ -48,10 +48,10 @@ export const availableNetworks: { [key: string]: NetworkSettings } = {
             bridgeAccount: "0.0.1547520",
             serviceFee: 10000,
             validator: "http://35.225.100.55/api/v1/",
-            etherscanTxUrl: "https://explorer-mumbai.maticvigil.com/tx/",
+            explorerTxUrl: "https://explorer-mumbai.maticvigil.com/tx/",
             infuraApiUrl: "wss://ws-matic-mumbai.chainstacklabs.com",
-            ethereumChainId: "80001",
-            ethereumNetwork: "Polygon Mumbai Testnet",
+            evmChainId: "80001",
+            evmNetwork: "Polygon Mumbai Testnet",
             mirrorNodeUrl: "http://testnet.mirrornode.hedera.com/api/v1/",
             blockConfirmations: 5
         }

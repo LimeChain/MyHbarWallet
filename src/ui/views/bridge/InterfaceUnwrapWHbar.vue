@@ -71,7 +71,7 @@
                 <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.accountString}}</strong></p>
                 <div class="transactions-list">
                     <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
-                    <a :href="state.ethereumExplorerTx" target="_blank">{{$t("interfaceWrapHbar.ethereum.transaction")}}
+                    <a :href="state.evmExplorerTx" target="_blank">{{$t("interfaceWrapHbar.evm.transaction")}}
                         <MaterialDesignIcon
                                 class="launch-icon"
                                 :icon="mdiLaunch"
@@ -149,7 +149,7 @@ interface State {
     metamask: MetamaskService | null;
     totalToReceive: string;
     hederaExplorerTx: string;
-    ethereumExplorerTx: string;
+    evmExplorerTx: string;
 }
 
 function oneHourDeadline(currentTimestamp: number): number {
@@ -208,7 +208,7 @@ export default defineComponent({
             metamask: null,
             totalToReceive: "",
             hederaExplorerTx: "",
-            ethereumExplorerTx: "",
+            evmExplorerTx: "",
             tokenService: null
         });
 
@@ -500,7 +500,7 @@ export default defineComponent({
             (idInput.value! as IdInputElement).clear();
             state.assetBalance = await getBalance();
             state.hederaExplorerTx = "";
-            state.ethereumExplorerTx = "";
+            state.evmExplorerTx = "";
             state.modalUnWrapTokensState = {
                 isOpen: false,
                 isBusy: false,
@@ -611,7 +611,7 @@ export default defineComponent({
         }
 
         function handleTransactionHash(transactionHash: string): void {
-            state.ethereumExplorerTx = `${getters.currentNetwork().bridge?.etherscanTxUrl}${transactionHash}`;
+            state.evmExplorerTx = `${getters.currentNetwork().bridge?.explorerTxUrl}${transactionHash}`;
             state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
         }
 

@@ -30,8 +30,8 @@ export class MetamaskService {
             throw new Error("Metamask not found");
         }
 
-        if (hexToNumber(this.metamaskProvider.chainId).toString() !== getters.currentNetwork().bridge?.ethereumChainId) {
-            throw new Error(`Invalid network selected. It should be ${getters.currentNetwork().bridge?.ethereumNetwork}`);
+        if (hexToNumber(this.metamaskProvider.chainId).toString() !== getters.currentNetwork().bridge?.evmChainId) {
+            throw new Error(`Invalid network selected. It should be ${getters.currentNetwork().bridge?.evmNetwork}`);
         }
     }
 

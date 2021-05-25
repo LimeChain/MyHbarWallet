@@ -67,7 +67,7 @@ button {
     padding-inline-start: 27px;
 }
 
-.interface-form-description{
+.interface-form-description {
     font-family: Montserrat;
     font-style: normal;
     font-weight: 500;

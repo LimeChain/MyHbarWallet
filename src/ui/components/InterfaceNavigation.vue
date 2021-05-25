@@ -39,8 +39,8 @@ import {LoginMethod} from "../wallets/Wallet";
             <template v-if="bridgeActive">
             <InterfaceNavigationSection
                 :icon="mdiEthereum"
-                :title="$t('interfaceNavigation.hederaEthereumBridge')"
-                :routes="hederaEthereumBridgeRoutes"
+                :title="$t('interfaceNavigation.hederaEvmBridge')"
+                :routes="hederaEvmBridgeRoutes"
             />
             </template>
         </nav>
@@ -61,11 +61,6 @@ import { mutations, store, getters } from "../store";
 
 import MaterialDesignIcon from "./MaterialDesignIcon.vue";
 import InterfaceNavigationSection from "./InterfaceNavigationSection.vue";
-import { NetworkName } from "../../domain/network";
-
-declare const BRIDGE_ACTIVE_ON_TESTNET: boolean;
-declare const BRIDGE_ACTIVE_ON_MAINNET: boolean;
-declare const BRIDGE_ACTIVE_ON_PREVIEWNET: boolean;
 
 function handleClick(): void {
     mutations.setInterfaceMenuIsOpen(false);
@@ -137,7 +132,7 @@ export default defineComponent({
             }
         ];
 
-        const hederaEthereumBridgeRoutes = [
+        const hederaEvmBridgeRoutes = [
             {
                 name: "wrap-hbar",
                 label: context.root.$t("interfaceNavigation.wrapHbar").toString()
@@ -167,7 +162,7 @@ export default defineComponent({
             classObject,
             filesRoutes,
             toolsRoutes,
-            hederaEthereumBridgeRoutes,
+            hederaEvmBridgeRoutes,
             mdiFileDocumentBoxMultipleOutline,
             mdiCoins,
             mdiToolbox,

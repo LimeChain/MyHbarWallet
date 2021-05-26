@@ -1,113 +1,124 @@
 <template>
     <div id="wrapHbar">
-    <InterfaceForm :title="$t('interfaceWrapHbar.title')" :description="$t('interfaceWrapHbar.description')">
-         <span
-            v-if="state.modalPendingTransfer.pendingTransactions.length > 0"
-            class="pending-transfer-bar">
-            <span class="pending-transfer-text">
-                {{ $t('interfaceWrapHbar.pendingTransferNotice') }}
+        <InterfaceForm
+            :title="$t('interfaceWrapHbar.title')"
+            :description="$t('interfaceWrapHbar.description')"
+        >
+            <span
+                v-if="state.modalPendingTransfer.pendingTransactions.length > 0"
+                class="pending-transfer-bar"
+            >
+                <span class="pending-transfer-text">
+                    {{ $t('interfaceWrapHbar.pendingTransferNotice') }}
+                </span>
+                <button class="pending-transfer-button">
+                    <ViewPendingTransfersButton
+                        :label="$t('interfaceWrapHbar.claim')"
+                        @openPendingTransfersModal="handleViewPendingTransfers"
+                    />
+                </button>
             </span>
-             <button class="pending-transfer-button">
-                <ViewPendingTransfersButton
-                    :label="$t('interfaceWrapHbar.claim')"
-                    @openPendingTransfersModal="handleViewPendingTransfers"
+            <span class="connect-wallet-bar">
+                <ConnectWalletButton
+                    :address="state.metamask ? state.metamask.croppedSelectedAddress() : $t('interfaceWrapHbar.connectWallet')"
+                    @connect="handleConnectToMetamask"
                 />
-            </button>
-        </span>
-        <span class="connect-wallet-bar">
-            <ConnectWalletButton
-                :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : $t('interfaceWrapHbar.connectWallet')"
-                @connect="handleConnectToMetamask" />
-        </span>
-        <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
-        <Select
-            v-model="state.assetNameWithId"
-            class="select"
-            :options="availableAssets"
-            @change="handleSelectChange"
-        />
-        <div
-            v-if="state.assetSelectionError"
-            class="error"
-        >
-            {{ state.assetSelectionError }}
-        </div>
-
-        <TextInput
-            :value="state.ethAddress"
-            :error="state.ethAddressErrorMessage"
-            :valid="isEthAddressValid"
-            has-input
-            :label="$t('common.ethAddress')"
-            show-validation
-            @input="handleEthAddressInput"
-        />
-        <div>
-        <div class="balance-container">
-            <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
-            <span class="balance-value">{{ state.assetBalance }}</span>
-        </div>
-
-        <TextInput
-            :value="state.amount"
-            :error="state.amountErrorMessage"
-            :valid="isAmountValid"
-            has-input
-            :label="$t('common.amount')"
-            show-validation
-            @input="handleInput"
-            :suffix="state.asset"
-        />
-        </div>
-
-        <template v-slot:footer>
-            <Button
-                :busy="state.isBusy"
-                :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid || !isMetamaskConnected"
-                :label="$t('interfaceWrapHbar.transferButton')"
-                @click="handleShowModalWrapTokens"
+            </span>
+            <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
+            <Select
+                v-model="state.assetNameWithId"
+                class="select"
+                :options="availableAssets"
+                @change="handleSelectChange"
             />
-        </template>
-
-        <ModalSuccess
-            v-model="state.modalSuccessState"
-            @dismiss="handleModalSuccessDismiss"
-        >
-            <div class="success">
-                <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.ethAddress}}</strong></p>
-                <div class="transactions-list">
-                    <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
-                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.hedera.transaction")}}
-                        <MaterialDesignIcon
-                                class="launch-icon"
-                                :icon="mdiLaunch"
-                        />
-                    </a><br>
-                    <a :href="state.evmTx" target="_blank">{{$t("interfaceWrapHbar.evm.transaction")}}
-                        <MaterialDesignIcon
-                                class="launch-icon"
-                                :icon="mdiLaunch"
-                        />
-                    </a>
-                </div>
+            <div
+                v-if="state.assetSelectionError"
+                class="error"
+            >
+                {{ state.assetSelectionError }}
             </div>
-        </ModalSuccess>
 
-        <ModalWrapTokens
-            v-model="state.modalWrapTokensState"
-            @deposit="handleDeposit"
-            @claim="handleClaim"
-            @change="handleModalWrapTokensChange"
-        />
+            <TextInput
+                :value="state.ethAddress"
+                :error="state.ethAddressErrorMessage"
+                :valid="isEthAddressValid"
+                has-input
+                :label="$t('common.ethAddress')"
+                show-validation
+                @input="handleEthAddressInput"
+            />
+            <div>
+                <div class="balance-container">
+                    <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
+                    <span class="balance-value">{{ state.assetBalance }}</span>
+                </div>
 
-        <ModalPendingTransfer
-            v-model="state.modalPendingTransfer"
-            @changeSelectedPendingTransaction="handleChangeSelectedPendingTransaction"
-            @connectMetamask="handleConnectToMetamask"
-            @claim="handleClaim"
-            @change="handleModalPendingTransferChange"
-        />
-    </InterfaceForm>
+                <TextInput
+                    :value="state.amount"
+                    :error="state.amountErrorMessage"
+                    :valid="isAmountValid"
+                    has-input
+                    :label="$t('common.amount')"
+                    show-validation
+                    :suffix="state.asset"
+                    @input="handleInput"
+                />
+            </div>
+
+            <template v-slot:footer>
+                <Button
+                    :busy="state.isBusy"
+                    :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid || !isMetamaskConnected"
+                    :label="$t('interfaceWrapHbar.transferButton')"
+                    @click="handleShowModalWrapTokens"
+                />
+            </template>
+
+            <ModalSuccess
+                v-model="state.modalSuccessState"
+                @dismiss="handleModalSuccessDismiss"
+            >
+                <div class="success">
+                    <p>Transferred <strong>{{ state.totalToReceive }} {{ state.asset }}</strong> to <strong>{{ state.ethAddress }}</strong></p>
+                    <div class="transactions-list">
+                        <p>{{ $t("interfaceWrapHbar.transaction.list.title") }}</p>
+                        <a
+                            :href="state.hederaExplorerTx"
+                            target="_blank"
+                        >{{ $t("interfaceWrapHbar.hedera.transaction") }}
+                            <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                            />
+                        </a><br>
+                        <a
+                            :href="state.evmTx"
+                            target="_blank"
+                        >{{ $t("interfaceWrapHbar.evm.transaction") }}
+                            <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                            />
+                        </a>
+                    </div>
+                </div>
+            </ModalSuccess>
+
+            <ModalWrapTokens
+                v-model="state.modalWrapTokensState"
+                @deposit="handleDeposit"
+                @claim="handleClaim"
+                @change="handleModalWrapTokensChange"
+            />
+
+            <ModalPendingTransfer
+                v-model="state.modalPendingTransfer"
+                @changeSelectedPendingTransaction="handleChangeSelectedPendingTransaction"
+                @connectMetamask="handleConnectToMetamask"
+                @claim="handleClaim"
+                @change="handleModalPendingTransferChange"
+            />
+        </InterfaceForm>
     </div>
 </template>
 
@@ -122,7 +133,7 @@ import TextInput from "../../components/TextInput.vue";
 import InterfaceForm from "../../components/InterfaceForm.vue";
 import Button from "../../components/Button.vue";
 import IDInput, { IdInputElement } from "../../components/IDInput.vue";
-import { convert, getValueOfUnit, Unit } from "../../../service/units";
+import { getValueOfUnit, Unit } from "../../../service/units";
 import { RouterService } from "../../../service/bridge/contracts/router/router";
 import { MetamaskService } from "../../../service/bridge/metamask/metamask";
 import { formatHbar, validateHbar } from "../../../service/format";
@@ -134,16 +145,15 @@ import { txData } from "../../../service/hedera-validator";
 import Select from "../../components/Select.vue";
 import { Asset } from "../../../domain/transfer";
 import { tokenTransfer } from "../../../service/bridge/hedera/hedera";
-import { MirrorNodeToken } from "src/domain/token";
 import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components/bridge/ModalWrapTokens.vue";
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 import ViewPendingTransfersButton from "../../components/bridge/ViewPendingTransfersButton.vue";
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
 import ModalPendingTransfer, { State as ModalPendingTransferState } from "../../components/bridge/ModalPendingTransfer.vue";
 
-let web3: any;
+import { MirrorNodeToken } from "src/domain/token";
+
 let transactionInterval: any = null;
-declare const window: any;
 
 // Defined in vue.config.js.
 
@@ -514,20 +524,6 @@ export default defineComponent({
 
             state.amount = value;
             state.amountErrorMessage = "";
-
-            // const roundTrippedAmount = convert(
-            //     state.amount,
-            //     Unit.Hbar,
-            //     Unit.Tinybar,
-            //     false
-            // );
-
-            // state.amount = convert(
-            //     roundTrippedAmount,
-            //     Unit.Tinybar,
-            //     Unit.Hbar,
-            //     false
-            // );
 
             boundInput(event, value, state.amount);
         }

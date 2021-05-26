@@ -37,11 +37,11 @@ import {LoginMethod} from "../wallets/Wallet";
             />
 
             <template v-if="bridgeActive">
-            <InterfaceNavigationSection
-                :icon="mdiEthereum"
-                :title="$t('interfaceNavigation.hederaEvmBridge')"
-                :routes="hederaEvmBridgeRoutes"
-            />
+                <InterfaceNavigationSection
+                    :icon="mdiEthereum"
+                    :title="$t('interfaceNavigation.hederaEvmBridge')"
+                    :routes="hederaEvmBridgeRoutes"
+                />
             </template>
         </nav>
         <div

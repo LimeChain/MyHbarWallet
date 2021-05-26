@@ -1,97 +1,107 @@
 <template>
     <div id="unwrapHbar">
-    <InterfaceForm :title="$t('interfaceUnwrapWHbar.title')" :description="$t('interfaceUnWrapHbar.description')">
-        <span class="connect-wallet-bar">
-            <ConnectWalletButton
-                :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : 'Connect Wallet'"
-                @connect="handleConnectToMetamask" />
-        </span>
-        <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
-        <Select
-            v-model="state.asset"
-            class="select"
-            :options="availableAssets"
-            @change="handleSelectChange"
-        />
-        <div
-            v-if="state.assetSelectionError"
-            class="error"
+        <InterfaceForm
+            :title="$t('interfaceUnwrapWHbar.title')"
+            :description="$t('interfaceUnWrapHbar.description')"
         >
-            {{ state.assetSelectionError }}
-        </div>
-
-        <IDInput
-            ref="idInput"
-            class="account"
-            :error="state.idErrorMessage"
-            :valid="state.accountValid"
-            :label="$t('common.toAccount')"
-            show-validation
-            @input="handleAccount"
-            @valid="handleAccountValid"
-        />
-        <div>
-        <div class="balance-container">
-            <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
-            <span class="balance-value">{{ state.assetBalance }}</span>
-        </div>
-
-        <TextInput
-            :value="state.amount"
-            :error="state.amountErrorMessage"
-            :valid="isAmountValid"
-            has-input
-            :label="$t('common.amount')"
-            show-validation
-            @input="handleInput"
-            :suffix="state.asset"
-        />
-        </div>
-
-        <template v-slot:footer>
-            <!-- <Button
-                :busy="state.isBusy"
-                :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid"
-                :label="$t('interfaceWrapHbar.transferButton')"
-                @click="handleShowSummary"
-            /> -->
-            <Button
-                :busy="state.isBusy"
-                :disabled="!isAmountValid || !isAssetValid || !state.accountValid || !isMetamaskConnected"
-                :label="$t('interfaceWrapHbar.transferButton')"
-                @click="handleShowModalUnWrapTokens"
+            <span class="connect-wallet-bar">
+                <ConnectWalletButton
+                    :address="state.metamask ? state.metamask.croppedSelectedAddress() : $t('interfaceWrapHbar.connectWallet')"
+                    @connect="handleConnectToMetamask"
+                />
+            </span>
+            <span class="label">{{ $t('interfaceWrapHbar.assetLabel') }}</span>
+            <Select
+                v-model="state.asset"
+                class="select"
+                :options="availableAssets"
+                @change="handleSelectChange"
             />
-        </template>
-
-        <ModalSuccess
-            v-model="state.modalSuccessState"
-            @dismiss="handleModalSuccessDismiss"
-        >
-            <div class="success">
-                <p>Transferred <strong>{{state.totalToReceive}} {{state.asset}}</strong> to <strong>{{state.accountString}}</strong></p>
-                <div class="transactions-list">
-                    <p>{{$t("interfaceWrapHbar.transaction.list.title")}}</p>
-                    <a :href="state.evmExplorerTx" target="_blank">{{$t("interfaceWrapHbar.evm.transaction")}}
-                        <MaterialDesignIcon
-                                class="launch-icon"
-                                :icon="mdiLaunch"
-                        />
-                    </a><br>
-                    <a :href="state.hederaExplorerTx" target="_blank">{{$t("interfaceWrapHbar.hedera.transaction")}}
-                        <MaterialDesignIcon
-                                class="launch-icon"
-                                :icon="mdiLaunch"
-                        />
-                    </a>
-                </div>
+            <div
+                v-if="state.assetSelectionError"
+                class="error"
+            >
+                {{ state.assetSelectionError }}
             </div>
-        </ModalSuccess>
 
-        <ModalUnwrapTokens
-            v-model="state.modalUnWrapTokensState"
-            @deposit="handleDeposit"
-        />
-    </InterfaceForm>
+            <IDInput
+                ref="idInput"
+                class="account"
+                :error="state.idErrorMessage"
+                :valid="state.accountValid"
+                :label="$t('common.toAccount')"
+                show-validation
+                @input="handleAccount"
+                @valid="handleAccountValid"
+            />
+            <div>
+                <div class="balance-container">
+                    <span class="label-small">{{ $t('interfaceWrapHbar.balanceLabel') }}</span>
+                    <span class="balance-value">{{ state.assetBalance }}</span>
+                </div>
+
+                <TextInput
+                    :value="state.amount"
+                    :error="state.amountErrorMessage"
+                    :valid="isAmountValid"
+                    has-input
+                    :label="$t('common.amount')"
+                    show-validation
+                    :suffix="state.asset"
+                    @input="handleInput"
+                />
+            </div>
+
+            <template v-slot:footer>
+                <!-- <Button
+                    :busy="state.isBusy"
+                    :disabled="!isEthAddressValid || !isAmountValid || !isSelectedAssetValid"
+                    :label="$t('interfaceWrapHbar.transferButton')"
+                    @click="handleShowSummary"
+                /> -->
+                <Button
+                    :busy="state.isBusy"
+                    :disabled="!isAmountValid || !isAssetValid || !state.accountValid || !isMetamaskConnected"
+                    :label="$t('interfaceWrapHbar.transferButton')"
+                    @click="handleShowModalUnWrapTokens"
+                />
+            </template>
+
+            <ModalSuccess
+                v-model="state.modalSuccessState"
+                @dismiss="handleModalSuccessDismiss"
+            >
+                <div class="success">
+                    <p>Transferred <strong>{{ state.totalToReceive }} {{ state.asset }}</strong> to <strong>{{ state.accountString }}</strong></p>
+                    <div class="transactions-list">
+                        <p>{{ $t("interfaceWrapHbar.transaction.list.title") }}</p>
+                        <a
+                            :href="state.evmExplorerTx"
+                            target="_blank"
+                        >{{ $t("interfaceWrapHbar.evm.transaction") }}
+                            <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                            />
+                        </a><br>
+                        <a
+                            :href="state.hederaExplorerTx"
+                            target="_blank"
+                        >{{ $t("interfaceWrapHbar.hedera.transaction") }}
+                            <MaterialDesignIcon
+                                class="launch-icon"
+                                :icon="mdiLaunch"
+                            />
+                        </a>
+                    </div>
+                </div>
+            </ModalSuccess>
+
+            <ModalUnwrapTokens
+                v-model="state.modalUnWrapTokensState"
+                @deposit="handleDeposit"
+            />
+        </InterfaceForm>
     </div>
 </template>
 
@@ -100,6 +110,7 @@ import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext,
 import { BigNumber } from "bignumber.js";
 import { AccountId, Client } from "@hashgraph/sdk";
 import { mdiLaunch, mdiHelpCircleOutline } from "@mdi/js";
+import { bytesToHex } from "web3-utils";
 
 import TextInput from "../../components/TextInput.vue";
 import InterfaceForm from "../../components/InterfaceForm.vue";
@@ -121,7 +132,7 @@ import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
 import { getTokens } from "../../../service/hedera";
 import { Asset } from "../../../domain/transfer";
-import { bytesToHex } from "web3-utils";
+import { LoginMethod } from "../../../domain/wallets/wallet";
 
 let transactionInterval: any = null;
 

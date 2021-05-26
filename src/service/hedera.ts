@@ -5,8 +5,8 @@ import { NetworkName, NetworkSettings } from "../domain/network";
 import { Session } from "../domain/user";
 import Wallet from "../domain/wallets/wallet";
 import { Token } from "../domain/token";
-import { getToken } from "./bridge/mirror-node";
 
+import { getToken } from "./bridge/mirror-node";
 import { kabutoRequest } from "./request";
 
 // Construct a Client
@@ -163,8 +163,7 @@ export async function getTokenDecimals(keys: string[], testnet = false): Promise
 
 export async function getTokens(
     accountId: AccountId,
-    client: Client,
-    testnet?: boolean
+    client: Client
 ): Promise<Token[] | null> {
     const { TokenBalanceQuery } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 

@@ -1,10 +1,11 @@
 import Web3 from "web3";
-import { BigNumber } from "bignumber.js";
-import { RouterABI } from "../contracts/abis";
-import { getters } from "../../../ui/store";
 import { splitSignature } from "@ethersproject/bytes";
 import { hexToNumber } from "web3-utils";
 
+import { RouterABI } from "../contracts/abis";
+import { getters } from "../../../ui/store";
+
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 declare let window: any;
 
 function reloadWindow(): void {

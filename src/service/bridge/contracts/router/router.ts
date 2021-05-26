@@ -38,13 +38,6 @@ export class RouterService extends InfuraProviderService {
 
     // Write operations
 
-    // Executes Router's burn method
-    public async burn(amount: BigNumber, receiverAccount: string, wrappedToken: string, options: any = null): Promise<any> {
-        return this.contract.methods
-            .burn(amount, receiverAccount, wrappedToken)
-            .send(options);
-    }
-
     // Returns an array of all wrapped assets {address, symbols}
     public async getWrappedAssets(): Promise<any[]> {
         const tokensCount = await this.wrappedAssetsCount();

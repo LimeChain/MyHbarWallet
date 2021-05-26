@@ -1,31 +1,31 @@
 <template>
     <div id="modal-unwrap-tokens">
-    <Modal
-        :is-open="state.isOpen"
-        not-closable
-        :title="$t('interfaceUnWrapHbar.title')"
-        @change="handleChange"
-    >
+        <Modal
+            :is-open="state.isOpen"
+            not-closable
+            :title="$t('interfaceUnWrapHbar.title')"
+            @change="handleChange"
+        >
             <TransferSummary
                 :asset="state.asset"
                 :receiver="state.receiver"
                 :amount="state.amount"
-                :serviceFee="state.serviceFee"
-                :totalToReceive="state.totalToReceive"
+                :service-fee="state.serviceFee"
+                :total-to-receive="state.totalToReceive"
             />
-            <Notice><div v-html="state.noticeText"></div></Notice>
-        <template>
-            <div class="buttons-containter">
-                <Button
-                    :busy="state.depositBusy"
-                    :disabled="state.depositDisabled"
-                    :compact="true"
-                    :label="$t('interfaceWrapHbar.deposit')"
-                    @click="handleDeposit"
-                />
-            </div>
-        </template>
-    </Modal>
+            <Notice><div v-html="state.noticeText" /></Notice>
+            <template>
+                <div class="buttons-containter">
+                    <Button
+                        :busy="state.depositBusy"
+                        :disabled="state.depositDisabled"
+                        :compact="true"
+                        :label="$t('interfaceWrapHbar.deposit')"
+                        @click="handleDeposit"
+                    />
+                </div>
+            </template>
+        </Modal>
     </div>
 </template>
 

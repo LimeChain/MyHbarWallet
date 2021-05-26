@@ -27,7 +27,8 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, SetupContext } from "@vue/composition-api";
+import { defineComponent } from "@vue/composition-api";
+
 import InfoButton from "../InfoButton.vue";
 
 export default defineComponent({
@@ -40,7 +41,7 @@ export default defineComponent({
         serviceFee: { type: String },
         totalToReceive: { type: String }
     },
-    setup(props, context: SetupContext): object {
+    setup(props): object {
         return { props };
     }
 });

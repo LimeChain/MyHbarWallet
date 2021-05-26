@@ -1,14 +1,15 @@
 <template>
     <Button
         :compact="true"
-        :label="props.walletAddress"
+        :label="props.address"
         @click="connectToMetamask"
     />
 </template>
 
 <script lang="ts">
-import Button from "../Button.vue";
 import { defineComponent, SetupContext, PropType } from "@vue/composition-api";
+
+import Button from "../Button.vue";
 
 // export interface State {}
 
@@ -17,7 +18,7 @@ export default defineComponent({
     components: { Button },
     props: {
         state: Object as PropType<{}>,
-        walletAddress: { type: String }
+        address: { type: String }
     },
     model: {
         prop: "state",

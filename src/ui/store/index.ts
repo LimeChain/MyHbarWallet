@@ -408,8 +408,7 @@ export const actions = {
         try {
             tokens = await getTokens(
                 store.state.account.user?.session.account!,
-                store.state.account.user?.session.client as Client,
-                getters.currentNetwork().name === NetworkName.TESTNET
+                store.state.account.user?.session.client as Client
             );
         } catch (error) {
             this.handleHederaError({ error, showAlert: true });

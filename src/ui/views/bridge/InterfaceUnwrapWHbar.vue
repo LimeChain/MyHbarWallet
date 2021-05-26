@@ -107,17 +107,19 @@
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext, watch } from "@vue/composition-api";
+import { TransactionReceipt } from "web3-core";
 import { BigNumber } from "bignumber.js";
 import { AccountId, Client } from "@hashgraph/sdk";
 import { mdiLaunch, mdiHelpCircleOutline } from "@mdi/js";
 import { bytesToHex } from "web3-utils";
+import { Signature } from "@ethersproject/bytes";
 
 import TextInput from "../../components/TextInput.vue";
 import InterfaceForm from "../../components/InterfaceForm.vue";
 import Button from "../../components/Button.vue";
 import IDInput, { IdInputElement } from "../../components/IDInput.vue";
 import { Unit } from "../../../service/units";
-import { RouterService } from "../../../service/bridge/contracts/router/router";
+import { RouterService, WrappedAsset } from "../../../service/bridge/contracts/router/router";
 import { TokenService } from "../../../service/bridge/contracts/token/token";
 import { InfuraProviderService } from "../../../service/bridge/provider/infura-provider";
 import { MetamaskService } from "../../../service/bridge/metamask/metamask";
@@ -134,7 +136,7 @@ import { getTokens } from "../../../service/hedera";
 import { Asset } from "../../../domain/transfer";
 import { LoginMethod } from "../../../domain/wallets/wallet";
 
-let transactionInterval: any = null;
+let transactionInterval: number = null;
 
 // Defined in vue.config.js.
 
@@ -151,11 +153,11 @@ interface State {
     modalUnWrapTokensState: ModalUnwrapTokensState;
     asset: string;
     assetSelectionError: string;
-    bridgeTokens: Map<string, any> | null;
+    bridgeTokens: Map<string, WrappedAsset> | null;
     providerService: InfuraProviderService | null;
     routerService: RouterService | null;
     tokenService: TokenService | null;
-    contractTokens: any[];
+    contractTokens: WrappedAsset[];
     assetBalance: string;
     metamask: MetamaskService | null;
     totalToReceive: string;
@@ -246,7 +248,7 @@ export default defineComponent({
         async function getBridgeTokens(): Promise<void> {
             // retrieve from contract
             state.contractTokens = await state.routerService?.getWrappedAssets()!;
-            const symbolToToken = new Map<string, any>();
+            const symbolToToken = new Map<string, WrappedAsset>();
 
             for (const token of state.contractTokens) {
                 symbolToToken.set(token.symbol, token);
@@ -497,7 +499,8 @@ export default defineComponent({
             state.isBusy = false;
         }
 
-        async function handleModalSuccessDismiss(error: any, receipt: any = null): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async function handleModalSuccessDismiss(error: any, receipt: TransactionReceipt = null): Promise<void> {
             if (receipt) {
                 visualizeSuccessModal();
                 return;
@@ -527,7 +530,7 @@ export default defineComponent({
             };
         }
 
-        async function handleBlockConfirmations(receipt: any): Promise<void> {
+        async function handleBlockConfirmations(receipt: TransactionReceipt): Promise<void> {
             const targetBlock = receipt.blockNumber + getters.currentNetwork().bridge?.blockConfirmations;
             clearInterval(transactionInterval);
             transactionInterval = setInterval(async() => {
@@ -578,7 +581,7 @@ export default defineComponent({
             }
         }
 
-        async function burnWithPermit(contractAddress: string, account: any, amount: string, deadline: number, signature: any): Promise<void> {
+        async function burnWithPermit(contractAddress: string, account: Uint8Array, amount: string, deadline: number, signature: Signature): Promise<void> {
             const hexAccount = bytesToHex(account);
 
             try {
@@ -626,7 +629,7 @@ export default defineComponent({
             state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceWrapHbar.waitForDeposit").toString();
         }
 
-        function handleReceipt(receipt: any): void {
+        function handleReceipt(receipt: TransactionReceipt): void {
             state.modalUnWrapTokensState.noticeText = context.root.$t("interfaceUnWrapHbar.waitForBlockConfirmations").toString();
             handleBlockConfirmations(receipt);
         }

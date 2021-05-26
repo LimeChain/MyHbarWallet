@@ -6,7 +6,7 @@ import type { Hbar, Client } from "@hashgraph/sdk";
 import { availableNetworks, NetworkName, NetworkSettings } from "../../domain/network";
 import { Session, User } from "../../domain/user";
 import Wallet from "../../domain/wallets/wallet";
-import { Token } from "../../domain/token";
+import { MirrorNodeToken, Token } from "../../domain/token";
 import { currentPrice } from "../../service/coingecko";
 import { constructSession, getBalance, getTokensInfo, getTokens } from "../../service/hedera";
 import { inUnitedStates } from "../../service/location";
@@ -393,9 +393,9 @@ export const actions = {
         mutations.setCurrentUserBalance(balance);
     },
 
-    async getTokens(tokenIds: string[]): Promise<any> {
+    async getTokens(tokenIds: string[]): Promise<MirrorNodeToken[]> {
         try {
-            return getTokensInfo(tokenIds, store.state.account.user?.session.client as Client);
+            return getTokensInfo(tokenIds);
         } catch (error) {
             this.handleHederaError({ error, showAlert: true });
         }

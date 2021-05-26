@@ -4,7 +4,7 @@ import { BigNumber } from "bignumber.js";
 import { NetworkName, NetworkSettings } from "../domain/network";
 import { Session } from "../domain/user";
 import Wallet from "../domain/wallets/wallet";
-import { Token } from "../domain/token";
+import { Token, MirrorNodeToken } from "../domain/token";
 
 import { getToken } from "./bridge/mirror-node";
 import { kabutoRequest } from "./request";
@@ -175,7 +175,7 @@ export async function getTokens(
         const keys = [ ...tokenBalances.keys() ];
         const balances = [ ...tokenBalances.values() ];
         // const decimals: Map<string, number> = await getTokenDecimals(keys.map((key) => key.toString()), testnet ?? false);
-        const tokenInfos = await getTokensInfo(keys.map((key) => key.toString()), client);
+        const tokenInfos = await getTokensInfo(keys.map((key) => key.toString()));
 
         const tokens: Token[] = [];
         // for (const [ i, element ] of keys.entries()) {
@@ -201,7 +201,7 @@ export async function getTokens(
     }
 }
 
-export async function getTokensInfo(tokenIds: string[], client: Client): Promise<any> {
+export async function getTokensInfo(tokenIds: string[]): Promise<MirrorNodeToken[]> {
     try {
         const promises = [];
         for (const id of tokenIds) {

@@ -54,8 +54,18 @@ import Notice from "../Notice.vue";
 import InfoButton from "../InfoButton.vue";
 import Select from "../Select.vue";
 import ConnectWalletButton from "../bridge/ConnectWalletButton.vue";
+import { MetamaskService } from "../../../service/bridge/metamask/metamask";
 
 import TransferSummary from "./TransferSummary.vue";
+
+export interface PendingTransaction {
+    amount: string;
+    asset: string;
+    receiver: string;
+    serviceFee: string;
+    totalToReceive: string;
+    transactionId: string;
+}
 
 export interface State {
     isOpen: boolean;
@@ -68,9 +78,9 @@ export interface State {
     amount: string;
     serviceFee: string;
     totalToReceive: string;
-    pendingTransactions: any[];
+    pendingTransactions: PendingTransaction[];
     transactionIds: string[];
-    metamask: any;
+    metamask: MetamaskService;
     depositCompleted: boolean;
     selectedTransaction: string;
 }
@@ -107,7 +117,7 @@ export default defineComponent({
         }
 
         function handleSelectChange(changedTo: string): void {
-            const selectedTransaction = props.state?.pendingTransactions.filter((t: any) => t.transactionId === changedTo);
+            const selectedTransaction = props.state?.pendingTransactions.filter((t: PendingTransaction) => t.transactionId === changedTo);
             if (selectedTransaction) {
                 context.emit("changeSelectedPendingTransaction", { selectedTransaction });
             }

@@ -1,9 +1,10 @@
 import Web3 from "web3";
-import { WebsocketProvider } from "web3-core";
+import { TransactionReceipt, WebsocketProvider } from "web3-core";
 
 import { getters } from "../../../ui/store";
 
 export class InfuraProviderService {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     protected web3: any;
 
     private provider: WebsocketProvider;
@@ -28,7 +29,7 @@ export class InfuraProviderService {
         return this.web3.eth.getBlockNumber();
     }
 
-    public async getTransactionReceipt(transactionHash: string): Promise<any> {
+    public async getTransactionReceipt(transactionHash: string): Promise<TransactionReceipt> {
         return this.web3.eth.getTransactionReceipt(transactionHash);
     }
 }

@@ -3,6 +3,12 @@ import Contract from "web3-eth-contract";
 import { TokenABI } from "../abis";
 import { InfuraProviderService } from "../../provider/infura-provider";
 
+export interface PermitData {
+    name: string;
+    controller: string;
+    nonces: number;
+}
+
 // TokenService wraps a contract instance of the WrappedToken contract
 export class TokenService extends InfuraProviderService {
     public constructor() {
@@ -17,7 +23,7 @@ export class TokenService extends InfuraProviderService {
         return tokenContract.methods.balanceOf(address).call();
     }
 
-    public async getPermitData(contractAddress: string, ownerAddress: string): Promise<any> {
+    public async getPermitData(contractAddress: string, ownerAddress: string): Promise<PermitData> {
         const contract = new Contract(TokenABI, contractAddress);
 
         let promises = [];

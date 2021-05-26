@@ -127,6 +127,7 @@ import { computed, defineComponent, onMounted, reactive, ref, Ref, SetupContext,
 import { BigNumber } from "bignumber.js";
 import { AccountId, TokenId, Client } from "@hashgraph/sdk";
 import Web3 from "web3";
+import { TransactionReceipt } from "web3-core";
 import { mdiLaunch, mdiHelpCircleOutline } from "@mdi/js";
 
 import TextInput from "../../components/TextInput.vue";
@@ -141,7 +142,7 @@ import ModalSuccess, { State as ModalSuccessState } from "../../components/Modal
 import Notice from "../../components/Notice.vue";
 import { LoginMethod } from "../../../domain/wallets/wallet";
 import { actions, getters } from "../../store";
-import { txData } from "../../../service/hedera-validator";
+import { txData, TransactionData } from "../../../service/hedera-validator";
 import Select from "../../components/Select.vue";
 import { Asset } from "../../../domain/transfer";
 import { tokenTransfer } from "../../../service/bridge/hedera/hedera";
@@ -149,11 +150,11 @@ import ModalWrapTokens, { State as ModalWrapTokensState } from "../../components
 import ConnectWalletButton from "../../components/bridge/ConnectWalletButton.vue";
 import ViewPendingTransfersButton from "../../components/bridge/ViewPendingTransfersButton.vue";
 import MaterialDesignIcon from "../../components/MaterialDesignIcon.vue";
-import ModalPendingTransfer, { State as ModalPendingTransferState } from "../../components/bridge/ModalPendingTransfer.vue";
+import ModalPendingTransfer, { State as ModalPendingTransferState, PendingTransaction } from "../../components/bridge/ModalPendingTransfer.vue";
 
 import { MirrorNodeToken } from "src/domain/token";
 
-let transactionInterval: any = null;
+let transactionInterval: number = null;
 
 // Defined in vue.config.js.
 
@@ -173,7 +174,7 @@ interface State {
     ethAddress: string | null;
     ethAddressErrorMessage: string | null;
     serviceFee: string;
-    evmTx: any;
+    evmTx: string;
     showEthMessage: boolean;
     wrapAmount: string;
     asset: string;
@@ -184,7 +185,7 @@ interface State {
     contractTokensMap: Map<string, string> | null;
     assetBalance: string;
     metamask: MetamaskService | null;
-    transactionData: any;
+    transactionData: TransactionData;
     totalToReceive: string;
     hederaExplorerTx: string;
 }
@@ -294,7 +295,7 @@ export default defineComponent({
             const transactions = localStorage.getItem("transactions");
             if (transactions) {
                 state.modalPendingTransfer.pendingTransactions = JSON.parse(transactions);
-                state.modalPendingTransfer.transactionIds = state.modalPendingTransfer.pendingTransactions.map((t: any) => t.transactionId);
+                state.modalPendingTransfer.transactionIds = state.modalPendingTransfer.pendingTransactions.map((t: PendingTransaction) => t.transactionId);
                 state.modalPendingTransfer.selectedTransaction = state.modalPendingTransfer.transactionIds[ 0 ];
             }
 
@@ -643,7 +644,7 @@ export default defineComponent({
             });
         }
 
-        async function visualizeSuccessModal(receipt: any): Promise<void> {
+        async function visualizeSuccessModal(receipt: TransactionReceipt): Promise<void> {
             state.hederaExplorerTx = `${getters.currentNetwork().bridge?.mirrorNodeUrl}transactions/${state.transactionId}`;
             state.evmTx = `${getters.currentNetwork().bridge?.explorerTxUrl}${receipt.transactionHash}`;
 
@@ -654,7 +655,8 @@ export default defineComponent({
             state.isBusy = false;
         }
 
-        async function handleModalSuccessDismiss(error: any, receipt: any): Promise<void> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async function handleModalSuccessDismiss(error: any, receipt: TransactionReceipt): Promise<void> {
             if (receipt) {
                 visualizeSuccessModal(receipt.transactionHash);
                 return;
@@ -712,7 +714,7 @@ export default defineComponent({
             }
         }
 
-        async function mint(transactionId: string, transactionData: any): Promise<void> {
+        async function mint(transactionId: string, transactionData: TransactionData): Promise<void> {
             if (!transactionData) {
                 await getValidatorTransactionData(transactionId);
             }
@@ -873,7 +875,7 @@ export default defineComponent({
             });
         }
 
-        function handleChangeSelectedPendingTransaction(transaction: any): void {
+        function handleChangeSelectedPendingTransaction(transaction: PendingTransaction): void {
             state.modalPendingTransfer.claimDisabled = true;
             if (state.transactionData) {
                 state.transactionData.majority = false;

@@ -1,6 +1,9 @@
 <template>
     <div class="interface-form">
-        <InterfaceFormTitle :title="title" :description="description" />
+        <InterfaceFormTitle
+            :title="title"
+            :description="description"
+        />
         <div class="interface-form-container">
             <div class="form-main">
                 <slot />

@@ -1,67 +1,77 @@
 <template>
     <div id="modal-wrap-tokens">
-    <Modal
-        :is-open="state.isOpen"
-        not-closable
-        :title="$t('interfaceWrapHbar.title')"
-        @change="handleChange"
-    >
+        <Modal
+            :is-open="state.isOpen"
+            not-closable
+            :title="$t('interfaceWrapHbar.title')"
+            @change="handleChange"
+        >
             <TransferSummary
                 :asset="state.asset"
                 :receiver="state.receiver"
                 :amount="state.amount"
-                :serviceFee="state.serviceFee"
-                :totalToReceive="state.totalToReceive"
+                :service-fee="state.serviceFee"
+                :total-to-receive="state.totalToReceive"
             />
-            <Notice><div v-html="state.noticeText"></div></Notice>
-        <template v-if="!state.depositCompleted">
-            <p class="fee-display">
-                <span class="fee-label">{{ $t("interfaceWrapHbar.hedera.fee") }}<InfoButton :message="$t('interfaceWrapHbar.hederaFeeInfo')" /></span>
-                <span class="fee-value">0.1</span>
-            </p>
-        </template>
-        <template v-if="state.depositCompleted">
-        </template>
-        <template>
-            <div class="buttons-containter">
-                <Button
-                    :busy="state.depositBusy"
-                    :disabled="state.depositDisabled"
-                    :compact="true"
-                    :label="$t('interfaceWrapHbar.deposit')"
-                    @click="handleDeposit"
-                />
-                <Button
-                    :busy="state.claimBusy"
-                    :compact="true"
-                    :disabled="state.claimDisabled"
-                    :label="$t('interfaceWrapHbar.claim')"
-                    @click="handleClaim"
-                />
-            </div>
-        </template>
-
-        <template>
-            <div class="steps-component">
-                <div class="steps-display">
-                    <span class="step-wrapper">
-                        <span class="step1" v-bind:class="{ 'step-inactive': state.depositCompleted }">1</span>
-                        <span class="step1-label" v-bind:class="{ 'step-label-inactive': state.depositCompleted }">{{$t('interfaceWrapHbar.deposit')}}</span>
-                    </span>
-                    <span class="middle"></span>
-                    <span class="step-wrapper">
-                        <span class="step2" v-bind:class="{ 'step-inactive': !state.depositCompleted }">2</span>
-                        <span class="step2-label" v-bind:class="{ 'step-label-inactive': !state.depositCompleted }">{{$t('interfaceWrapHbar.claim')}}</span>
-                    </span>
+            <Notice><div v-html="state.noticeText" /></Notice>
+            <template v-if="!state.depositCompleted">
+                <p class="fee-display">
+                    <span class="fee-label">{{ $t("interfaceWrapHbar.hedera.fee") }}<InfoButton :message="$t('interfaceWrapHbar.hederaFeeInfo')" /></span>
+                    <span class="fee-value">0.1</span>
+                </p>
+            </template>
+            <template>
+                <div class="buttons-containter">
+                    <Button
+                        :busy="state.depositBusy"
+                        :disabled="state.depositDisabled"
+                        :compact="true"
+                        :label="$t('interfaceWrapHbar.deposit')"
+                        @click="handleDeposit"
+                    />
+                    <Button
+                        :busy="state.claimBusy"
+                        :compact="true"
+                        :disabled="state.claimDisabled"
+                        :label="$t('interfaceWrapHbar.claim')"
+                        @click="handleClaim"
+                    />
                 </div>
-            </div>
-        </template>
-    </Modal>
+            </template>
+
+            <template>
+                <div class="steps-component">
+                    <div class="steps-display">
+                        <span class="step-wrapper">
+                            <span
+                                class="step1"
+                                :class="{ 'step-inactive': state.depositCompleted }"
+                            >1</span>
+                            <span
+                                class="step1-label"
+                                :class="{ 'step-label-inactive': state.depositCompleted }"
+                            >{{ $t('interfaceWrapHbar.deposit') }}</span>
+                        </span>
+                        <span class="middle" />
+                        <span class="step-wrapper">
+                            <span
+                                class="step2"
+                                :class="{ 'step-inactive': !state.depositCompleted }"
+                            >2</span>
+                            <span
+                                class="step2-label"
+                                :class="{ 'step-label-inactive': !state.depositCompleted }"
+                            >{{ $t('interfaceWrapHbar.claim') }}</span>
+                        </span>
+                    </div>
+                </div>
+            </template>
+        </Modal>
     </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, SetupContext } from "@vue/composition-api";
+import { defineComponent, PropType, SetupContext } from "@vue/composition-api";
 
 import Button from "../Button.vue";
 import Modal from "../Modal.vue";

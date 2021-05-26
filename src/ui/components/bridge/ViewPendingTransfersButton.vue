@@ -7,8 +7,9 @@
 </template>
 
 <script lang="ts">
-import Button from "../Button.vue";
 import { defineComponent, SetupContext, PropType } from "@vue/composition-api";
+
+import Button from "../Button.vue";
 
 // export interface State {}
 

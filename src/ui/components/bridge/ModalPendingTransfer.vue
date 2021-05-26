@@ -1,52 +1,52 @@
 <template>
     <div id="modal-pending-transfer">
-    <Modal
-        :is-open="state.isOpen"
-        not-closable
-        :title="$t('interfacePendingTransfer.title')"
-        @change="handleChange"
-    >
-        <div class="description">
-            You have unclaimed assets on the Polygon network. <br>Select the transaction which you would like to claim.
-        </div>
-        <div class="modal-header">
-            <Select
-                v-model="state.selectedTransaction"
-                class="select-transaction"
-                :options="state.transactionIds"
-                @change="handleSelectChange"
-            />
-            <ConnectWalletButton
-                :walletAddress="state.metamask ? state.metamask.croppedSelectedAddress() : 'Connect Wallet'"
-                @connect="handleConnectToMetamask"
-            />
-        </div>
-        <TransferSummary
+        <Modal
+            :is-open="state.isOpen"
+            not-closable
+            :title="$t('interfacePendingTransfer.title')"
+            @change="handleChange"
+        >
+            <div class="description">
+                You have unclaimed assets on the Polygon network. <br>Select the transaction which you would like to claim.
+            </div>
+            <div class="modal-header">
+                <Select
+                    v-model="state.selectedTransaction"
+                    class="select-transaction"
+                    :options="state.transactionIds"
+                    @change="handleSelectChange"
+                />
+                <ConnectWalletButton
+                    :address="state.metamask ? state.metamask.croppedSelectedAddress() : $t('interfaceWrapHbar.connectWallet')"
+                    @connect="handleConnectToMetamask"
+                />
+            </div>
+            <TransferSummary
                 :asset="state.asset"
                 :receiver="state.receiver"
                 :amount="state.amount"
-                :serviceFee="state.serviceFee"
-                :totalToReceive="state.totalToReceive"
-        />
-        <Notice><div v-html="state.noticeText"></div></Notice>
+                :service-fee="state.serviceFee"
+                :total-to-receive="state.totalToReceive"
+            />
+            <Notice><div v-html="state.noticeText" /></Notice>
 
-        <template>
-            <div class="buttons-containter">
-                <Button
-                    :busy="state.claimBusy"
-                    :compact="true"
-                    :disabled="state.claimDisabled ? true : false"
-                    :label="$t('interfaceWrapHbar.claim')"
-                    @click="handleClaim"
-                />
-            </div>
-        </template>
-    </Modal>
+            <template>
+                <div class="buttons-containter">
+                    <Button
+                        :busy="state.claimBusy"
+                        :compact="true"
+                        :disabled="state.claimDisabled ? true : false"
+                        :label="$t('interfaceWrapHbar.claim')"
+                        @click="handleClaim"
+                    />
+                </div>
+            </template>
+        </Modal>
     </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType, SetupContext } from "@vue/composition-api";
+import { defineComponent, PropType, SetupContext } from "@vue/composition-api";
 
 import Button from "../Button.vue";
 import Modal from "../Modal.vue";
@@ -54,8 +54,18 @@ import Notice from "../Notice.vue";
 import InfoButton from "../InfoButton.vue";
 import Select from "../Select.vue";
 import ConnectWalletButton from "../bridge/ConnectWalletButton.vue";
+import { MetamaskService } from "../../../service/bridge/metamask/metamask";
 
 import TransferSummary from "./TransferSummary.vue";
+
+export interface PendingTransaction {
+    amount: string;
+    asset: string;
+    receiver: string;
+    serviceFee: string;
+    totalToReceive: string;
+    transactionId: string;
+}
 
 export interface State {
     isOpen: boolean;
@@ -68,9 +78,9 @@ export interface State {
     amount: string;
     serviceFee: string;
     totalToReceive: string;
-    pendingTransactions: any[];
+    pendingTransactions: PendingTransaction[];
     transactionIds: string[];
-    metamask: any;
+    metamask: MetamaskService;
     depositCompleted: boolean;
     selectedTransaction: string;
 }
@@ -107,7 +117,7 @@ export default defineComponent({
         }
 
         function handleSelectChange(changedTo: string): void {
-            const selectedTransaction = props.state?.pendingTransactions.filter((t: any) => t.transactionId === changedTo);
+            const selectedTransaction = props.state?.pendingTransactions.filter((t: PendingTransaction) => t.transactionId === changedTo);
             if (selectedTransaction) {
                 context.emit("changeSelectedPendingTransaction", { selectedTransaction });
             }

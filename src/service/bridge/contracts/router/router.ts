@@ -7,6 +7,13 @@ import { RouterABI, TokenABI } from "../abis";
 import { getters } from "../../../../ui/store";
 import { InfuraProviderService } from "../../provider/infura-provider";
 
+export interface WrappedAsset {
+    address: string;
+    symbol: string;
+    decimals: number;
+    nativeAsset: string;
+}
+
 // RouterService wraps a contract instance of the Router contract
 export class RouterService extends InfuraProviderService {
     private contract: Contract;
@@ -38,15 +45,8 @@ export class RouterService extends InfuraProviderService {
 
     // Write operations
 
-    // Executes Router's burn method
-    public async burn(amount: BigNumber, receiverAccount: string, wrappedToken: string, options: any = null): Promise<any> {
-        return this.contract.methods
-            .burn(amount, receiverAccount, wrappedToken)
-            .send(options);
-    }
-
     // Returns an array of all wrapped assets {address, symbols}
-    public async getWrappedAssets(): Promise<any[]> {
+    public async getWrappedAssets(): Promise<WrappedAsset[]> {
         const tokensCount = await this.wrappedAssetsCount();
 
         const assets = [];
@@ -57,7 +57,7 @@ export class RouterService extends InfuraProviderService {
         return Promise.all(assets);
     }
 
-    public async getWrappedAsset(index: number): Promise<any> {
+    public async getWrappedAsset(index: number): Promise<WrappedAsset> {
         const address = await this.wrappedAssetAt(index);
         const web3 = new Web3(this.getProvider());
         const wrappedAssetContract = new web3.eth.Contract(TokenABI, address);

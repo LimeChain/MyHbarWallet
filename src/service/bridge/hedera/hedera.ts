@@ -1,5 +1,5 @@
 import { AccountId, Client, TokenId, TransactionId } from "@hashgraph/sdk";
-import BigNumber from "bignumber.js";
+import { BigNumber } from "bignumber.js";
 
 export async function hbarTransfer(
     recipient: AccountId,
@@ -23,7 +23,7 @@ export async function tokenTransfer(
     memo: string,
     client: Client
 ): Promise<TransactionId> {
-    const { TokenTransferTransaction } = await import("@hashgraph/sdk");
+    const { TokenTransferTransaction } = await import(/* webpackChunkName: "hashgraph" */ "@hashgraph/sdk");
 
     return new TokenTransferTransaction()
         .addSender(tokenId, client._getOperatorAccountId()!, amount)

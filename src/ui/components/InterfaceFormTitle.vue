@@ -3,7 +3,7 @@
         <div class="interface-form-title">
             {{ title }}
             <div class="interface-form-description">
-             {{ description }}
+                {{ description }}
             </div>
         </div>
         <Button
